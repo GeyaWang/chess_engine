@@ -25,7 +25,5 @@ namespace chess {
                 throw std::invalid_argument("Invalid coordinate given");
             }
         }
-
-
     };
 }
