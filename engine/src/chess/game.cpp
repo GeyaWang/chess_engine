@@ -1,143 +1,120 @@
 #include "chess/game.hpp"
+#include <stdexcept>
+#include <chess/move_generator.hpp>
+
+
+namespace {
+    constexpr uint8_t parse(const std::string &s) {
+        if (s.length() != 2) {
+            throw std::invalid_argument("Algebraic notation must be given");
+        }
+        const uint8_t x = s[0] - 'a';
+        const uint8_t y = 7 - (s[1] - '1');
+        if (x < 0 || x >= 8 || y < 0 || y >= 8) {
+            throw std::invalid_argument("Algebraic notation must be given");
+        }
+        return y * 8 + x;
+    }
+}
 
 
 namespace mf::chess {
     Game::Game() {
-        board_states_[0] = BoardState::create_default();
+        state_history_[0] = BoardState::create_default();
     }
 
     BoardState &Game::get_current_board() {
-        return board_states_[current_index_];
+        return state_history_[current_index_];
     }
 
-    void Game::move(const Move &move) {
-        const auto new_index = current_index_ + 1;
-        board_states_[new_index] = board_states_[current_index_];
+    void Game::make_move(const std::string& from, const std::string& to, const Type promotion) {
+        const uint8_t from_square = parse(from);
+        const uint8_t to_square = parse(to);
 
-        const uint64_t from_board = static_cast<uint64_t>(1) << move.from;
-        const uint64_t to_board = static_cast<uint64_t>(1) << move.to;
+        std::array<Move, 218> moves{};
+        const int count = MoveGenerator::gen_pseudo_legal(get_current_board(), moves);
+        for (int i = 0; i < count; i++) {
+            if (const Move move = moves[i]; move.from == from_square && move.to == to_square && move.promotion == promotion) {
+                make_move(move);
+                break;
+            }
+        }
+    }
+
+    void Game::make_move(const Move &move) {
+        const BoardState& old_state = state_history_[current_index_];
+        BoardState& new_state = state_history_[current_index_ + 1];
+        new_state = old_state;
+
+        const uint64_t from_board = bit(move.from);
+        const uint64_t to_board = bit(move.to);
         const uint64_t move_board = from_board | to_board;
 
-        const auto ally_pieces = board_states_[current_index_].turn == WHITE ? WHITE_PIECES : BLACK_PIECES;
-        const auto enemy_capturable_pieces = board_states_[current_index_].turn == WHITE ? BLACK_CAPTURABLE_PIECES : WHITE_CAPTURABLE_PIECES;
+        const Colour ally_clr = get_piece_colour(move.piece);
+        const int ally_pawn_dir = ally_clr == WHITE ? WHITE_PAWN_DIRECTION : BLACK_PAWN_DIRECTION;
 
-        // Move piece at "from" position
-        PieceType move_piece = EMPTY;
-        for (const auto i : ally_pieces) {
-            if (board_states_[current_index_].bitboards[i] & from_board) {
-                board_states_[new_index].bitboards[i] ^= move_board;
-                move_piece = i;
-                break;
+        if (move.move_type & CAPTURE) {
+            if (move.move_type & EN_PASSENT) {
+                const u_int8_t capture_square = move.to - ally_pawn_dir;
+                new_state.apply_mask(move.captured, bit(capture_square));
+            } else {
+                // Capture opponent piece
+                new_state.apply_mask(move.captured, to_board);
             }
         }
 
-        // Capture piece at "to" position
-        for (const auto i : enemy_capturable_pieces) {
-            if (board_states_[current_index_].bitboards[i] & to_board) {
-                board_states_[new_index].bitboards[i] ^= to_board;
-                break;
+        if (move.move_type & PROMOTION) {
+            new_state.apply_mask(move.piece, from_board);
+            new_state.apply_mask(move.promotion, to_board);
+        } else {
+            // Move piece
+            new_state.apply_mask(move.piece, move_board);
+
+            if (move.move_type & PAWN_DOUBLE) {
+                // Create en-passent target
+                new_state.en_passent_target = bit(move.from + ally_pawn_dir);
+            } else {
+                new_state.en_passent_target = 0;
+
+                if (move.move_type & CASTLE) {
+                    new_state.en_passent_target = 0;
+
+                    // Make rook move
+                    const uint8_t rook_from = move.to > move.from ? move.to + 1 : move.to - 2;
+                    const uint8_t rook_to = move.to > move.from ? move.to - 1 : move.to + 1;
+                    const uint64_t rook_move_board = bit(rook_from) | bit(rook_to);
+                    const Type rook_type = ally_clr == WHITE ? WHITE_ROOK : BLACK_ROOK;
+                    new_state.apply_mask(rook_type, rook_move_board);
+                }
+            }
+
+            // Update castling rights
+            if (move.piece == WHITE_KING) {
+                new_state.castling_rights[WHITE] = NONE_CASTLE;
+            } else if (move.piece == BLACK_KING) {
+                new_state.castling_rights[BLACK] = NONE_CASTLE;
+            } else if (move.piece == WHITE_ROOK) {
+                if (old_state.castling_rights[WHITE] & KINGSIDE_CASTLE && move.from == sq('h', 1)) {
+                    new_state.castling_rights[WHITE] &= ~KINGSIDE_CASTLE;
+                } else if (QUEENSIDE_CASTLE & old_state.castling_rights[WHITE] && move.from == sq('a', 1)) {
+                    new_state.castling_rights[WHITE] &= ~QUEENSIDE_CASTLE;
+                }
+            } else if (move.piece == BLACK_ROOK) {
+                if (old_state.castling_rights[BLACK] & KINGSIDE_CASTLE && move.from == sq('h', 8)) {
+                    new_state.castling_rights[BLACK] &= ~KINGSIDE_CASTLE;
+                } else if (old_state.castling_rights[BLACK] & QUEENSIDE_CASTLE && move.from == sq('a', 8)) {
+                    new_state.castling_rights[BLACK] &= ~QUEENSIDE_CASTLE;
+                }
             }
         }
 
+        new_state.side_to_move = switch_colour(ally_clr);
         current_index_++;
     }
 
-    void Game::undo() {
+    void Game::undo_move() {
         if (current_index_ > 0) {
             current_index_--;
         }
-    }
-
-    void Game::gen_piece_moves(MoveList &move_list, const PieceType piece_type, const uint8_t pos) {
-        switch (piece_type) {
-            case WHITE_PAWN:
-            case BLACK_PAWN: {
-                break;
-            }
-
-            case WHITE_KNIGHT:
-            case BLACK_KNIGHT: {
-                break;
-            }
-
-            case WHITE_BISHOP:
-            case BLACK_BISHOP: {
-                // Top-left
-                uint8_t p = pos;
-                for (int i = 0; i < pos % 8; i++) {
-                    p -= 9;
-                    if (p < 0) break;
-                    move_list.add({pos, p});
-                }
-
-                // Top-right
-                p = pos;
-                for (int i = 0; i < 7 - pos % 8; i++) {
-                    p -= 7;
-                    if (p < 0) break;
-                    move_list.add({pos, p});
-                }
-
-                // Bottom-left
-                p = pos;
-                for (int i = 0; i < pos % 8; i++) {
-                    p += 7;
-                    if (p >= 64) break;
-                    move_list.add({pos, p});
-                }
-
-                // Bottom-right
-                p = pos;
-                for (int i = 0; i < 7 - pos % 8; i++) {
-                    p += 9;
-                    if (p >= 64) break;
-                    move_list.add({pos, p});
-                }
-                break;
-            }
-
-            case WHITE_ROOK:
-            case BLACK_ROOK: {
-                break;
-            }
-
-            case WHITE_QUEEN:
-            case BLACK_QUEEN: {
-                break;
-            }
-
-            case WHITE_KING:
-            case BLACK_KING: {
-                break;
-            }
-
-            default:
-                break;
-        }
-    }
-
-    MoveList Game::gen_moves() {
-        MoveList move_list{};
-
-        // Iterate through ally pieces
-        for (const auto piece_type : get_current_board().turn == WHITE ? WHITE_PIECES : BLACK_PIECES) {
-            for (uint8_t pos = 0; pos < 64; pos++) {
-                if (const uint64_t mask = static_cast<uint64_t>(1) << pos; mask & get_current_board().bitboards[piece_type]) {
-                    gen_piece_moves(move_list, piece_type, pos);
-                }
-            }
-        }
-
-        return move_list;
-    }
-
-    bool Game::is_legal(const Move &move) {
-        const auto [moves, count] = gen_moves();
-        for (int i = 0; i < count; i++) {
-            if (moves[i] == move) {
-                return true;
-            }
-        }
-        return false;
     }
 }

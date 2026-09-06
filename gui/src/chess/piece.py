@@ -6,6 +6,13 @@ class PieceColour(Enum):
     BLACK = auto()
     NONE = auto()
 
+    def __invert__(self):
+        if self is PieceColour.WHITE:
+            return PieceColour.BLACK
+        elif self is PieceColour.BLACK:
+            return PieceColour.WHITE
+        return PieceColour.NONE
+
 
 class PieceType(Enum):
     KING = auto()

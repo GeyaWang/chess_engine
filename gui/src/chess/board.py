@@ -31,6 +31,7 @@ PIECE_DICT = {
 
 class Board:
     def __init__(self):
+        self.pieces = []
         self._board_data = []
         for i in range(8):
             row = []
@@ -39,25 +40,66 @@ class Board:
                 if typ == PieceType.EMPTY:
                     row.append(None)
                 else:
-                    row.append(Piece(clr, typ, (j, i)))
+                    piece = Piece(clr, typ, (j, i))
+                    row.append(piece)
+                    self.pieces.append(piece)
             self._board_data.append(row)
 
-        self._empty = Piece(PieceColour.NONE, PieceType.EMPTY, (0, 0))
+        self._EMPTY = Piece(PieceColour.NONE, PieceType.EMPTY, (0, 0))
+
+        self._prev_piece_pos1 = None
+        self._prev_piece_pos2 = None
+
+    def _set(self, piece: Piece|None, x: int, y: int):
+        self._board_data[y][x] = piece
 
     def get(self, x: int, y: int) -> Piece:
         piece = self._board_data[y][x]
-        return self._empty if piece is None else piece
+        return self._EMPTY if piece is None else piece
 
-    def make_move(self, pos1: tuple[int, int], pos2: tuple[int, int]) -> None:
-        piece1 = self._board_data[pos1[1]][pos1[0]]
-        piece2 = self._board_data[pos2[1]][pos2[0]]
+    def undo(self) -> None:
+        if self._prev_piece_pos1 is None:
+            return
+
+        piece1, pos1 = self._prev_piece_pos1
+        piece2, pos2 = self._prev_piece_pos2
+        piece1.set_pos(pos1)
 
         if piece2 is not None:
-            piece2.kill()
+            piece2.set_pos(pos2)
+            piece2.is_dead = False
+            if piece2 not in self.pieces:
+                self.pieces.append(piece2)
+
+        self._set(piece1, *pos1)
+        self._set(piece2, *pos2)
+
+        self._prev_piece_pos1 = None
+        self._prev_piece_pos2 = None
+
+    def kill_piece(self, piece: Piece):
+        if piece not in self.pieces:
+            return
+
+        piece.kill()
+        self.pieces.remove(piece)
+
+    def make_move(self, pos1: tuple[int, int], pos2: tuple[int, int]) -> None:
+        piece1 = self.get(*pos1)
+        piece2 = self.get(*pos2)
+        self.kill_piece(piece2)
 
         piece1.set_pos(pos2)
-        self._board_data[pos2[1]][pos2[0]] = piece1
-        self._board_data[pos1[1]][pos1[0]] = None
+        self._set(piece1, *pos2)
+        self._set(None, *pos1)
+
+        self._prev_piece_pos1 = (piece1, pos1)
+        self._prev_piece_pos2 = (piece2, pos2)
+
+    def set_empty(self, pos):
+        piece = self._board_data[pos[1]][pos[0]]
+        self.kill_piece(piece)
+        self._board_data[pos[1]][pos[0]] = None
 
     def __str__(self):
         reverse_dict = {

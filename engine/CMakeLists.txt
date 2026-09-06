@@ -26,3 +26,6 @@ target_link_libraries(board_test ${PROJECT_NAME})
 
 add_executable(game_test tests/game_test.cpp)
 target_link_libraries(game_test ${PROJECT_NAME})
+
+add_executable(move_generator_test tests/move_generator_test.cpp)
+target_link_libraries(move_generator_test ${PROJECT_NAME})

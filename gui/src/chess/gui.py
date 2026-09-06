@@ -1,7 +1,7 @@
 import pygame
 import os
 import pathlib
-from chess.settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR
+from chess.settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, DARK_MOVE_CLR, LIGHT_MOVE_CLR
 from chess.piece import Piece, PieceType, PieceColour
 from chess.game import Game
 from chess.engine import Engine
@@ -81,11 +81,20 @@ class Gui:
         pygame.draw.rect(self.screen, clr, pygame.Rect(*self._get_real_coord(x, y), SQUARE_WIDTH, SQUARE_HEIGHT))
 
     def _draw_board(self) -> None:
-        self.screen.fill(DARK_CLR)
+        self.screen.fill(LIGHT_CLR)
         for x in range(8):
             for y in range(8):
-                if not (x + y) % 2:
-                    self._draw_square(x, y, LIGHT_CLR)
+                if (x + y) % 2:
+                    self._draw_square(x, y, DARK_CLR)
+
+        # Draw prev move
+        for pos in self._game.prev_move:
+            if pos is None:
+                continue
+            if (pos[0] + pos[1]) % 2:
+                self._draw_square(*pos, DARK_MOVE_CLR)
+            else:
+                self._draw_square(*pos, LIGHT_MOVE_CLR)
 
     def _draw_pieces(self) -> None:
         self._non_hold_piece_list.draw(self.screen)
@@ -108,15 +117,19 @@ class Gui:
             pos2 = (mouse_pos[0] // SQUARE_WIDTH, mouse_pos[1] // SQUARE_HEIGHT)
 
             # Move piece
-            self._game.try_move(pos1, pos2)
-            self._piece_list.update()
+            if self._game.try_move(pos1, pos2):
+                self._piece_list.update()
 
-            # Send move to engine
-            # msg_send = f"move {coord_to_algebraic(pos1)} {coord_to_algebraic(pos2)}"
-            # self._engine.write(msg_send)
-            # print(f"Sent: {msg_send.strip()}")
-            # msg_rec = self._engine.listen()
-            # print(f"Received: {msg_rec.strip()}")
+                if self._game.is_game_over():
+                    print("Checkmate!")
+                    self.running = False
+
+                # Send move to engine
+                msg_send = f"move {coord_to_algebraic(pos1)} {coord_to_algebraic(pos2)}"
+                self._engine.write(msg_send)
+                print(f"Sent: {msg_send.strip()}")
+                msg_rec = self._engine.listen()
+                print(f"Received: {msg_rec.strip()}")
 
             # Reset
             self._is_holding_piece = False

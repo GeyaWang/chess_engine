@@ -32,16 +32,17 @@ void gui_mode() {
         if (prefix == "quit") {
             break;
         }
-        if (prefix == "move") {
-            const auto& pos1 = string_list.at(1);
-            const auto& pos2 = string_list.at(2);
-            if (game.is_legal({pos1, pos2})) {
-                game.move({pos1, pos2});
-                std::cout << "ok\n";
-            } else {
-                std::cout << "bad\n";
-            }
-        } else {
+        // if (prefix == "move") {
+        //     const auto& pos1 = string_list.at(1);
+        //     const auto& pos2 = string_list.at(2);
+        //     if (game.is_legal({pos1, pos2})) {
+        //         game.make_move({pos1, pos2});
+        //         std::cout << "ok\n";
+        //     } else {
+        //         std::cout << "bad\n";
+        //     }
+        // }
+        else {
             std::cout << "Unknown command: '" << msg << "'\n";
         }
     }

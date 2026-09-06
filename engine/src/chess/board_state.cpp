@@ -3,51 +3,50 @@
 #include <iostream>
 
 
-namespace {
-    using namespace mf::chess;
-    std::string get_piece_symbol(const PieceType piece) {
-        switch (piece) {
-            case EMPTY:
-                return " ";
-            case BLACK_PAWN:
-                return "♙";
-            case BLACK_KNIGHT:
-                return "♘";
-            case BLACK_BISHOP:
-                return "♗";
-            case BLACK_ROOK:
-                return "♖";
-            case BLACK_QUEEN:
-                return "♕";
-            case BLACK_KING:
-                return "♔";
-            case WHITE_PAWN:
-                return "♟";
-            case WHITE_KNIGHT:
-                return "♞";
-            case WHITE_BISHOP:
-                return "♝";
-            case WHITE_ROOK:
-                return "♜";
-            case WHITE_QUEEN:
-                return "♛";
-            default:  // BLACK_KING
-                return "♚";;
-        }
-    }
-
-    std::string repeat_string(const std::string& s, const int n) {
-        std::string result;
-        for (int i = 0; i < n; i++) {
-            result += s;
-        }
-        return result;
-    }
-}
-
-
 namespace mf::chess {
-    void BoardState::draw(const BoardState& board_state) {
+    namespace {
+        std::string get_piece_symbol(const Type piece) {
+            switch (piece) {
+                case NONE:
+                    return " ";
+                case BLACK_PAWN:
+                    return "♙";
+                case BLACK_KNIGHT:
+                    return "♘";
+                case BLACK_BISHOP:
+                    return "♗";
+                case BLACK_ROOK:
+                    return "♖";
+                case BLACK_QUEEN:
+                    return "♕";
+                case BLACK_KING:
+                    return "♔";
+                case WHITE_PAWN:
+                    return "♟";
+                case WHITE_KNIGHT:
+                    return "♞";
+                case WHITE_BISHOP:
+                    return "♝";
+                case WHITE_ROOK:
+                    return "♜";
+                case WHITE_QUEEN:
+                    return "♛";
+                default:  // BLACK_KING
+                    return "♚";;
+            }
+        }
+
+        std::string repeat_string(const std::string& s, const int n) {
+            std::string result;
+            for (int i = 0; i < n; i++) {
+                result += s;
+            }
+            return result;
+        }
+    }
+
+
+    void draw_board(const BoardState& board_state) {
         static std::string BOARD_TOP = "  ┌─" + repeat_string("──┬─", 7) + "──┐";
         static std::string BOARD_MID = "  ├─" + repeat_string("──┼─", 7) + "──┤";
         static std::string BOARD_BOT = "  └─" + repeat_string("──┴─", 7) + "──┘";
@@ -69,40 +68,59 @@ namespace mf::chess {
     }
 
     BoardState BoardState::create_default() {
-        BoardState default_board{};
-        default_board.bitboards[WHITE_PAWN]   = 0x00ff000000000000;
-        default_board.bitboards[WHITE_KNIGHT] = 0x4200000000000000;
-        default_board.bitboards[WHITE_BISHOP] = 0x2400000000000000;
-        default_board.bitboards[WHITE_ROOK]   = 0x8100000000000000;
-        default_board.bitboards[WHITE_QUEEN]  = 0x0800000000000000;
-        default_board.bitboards[WHITE_KING]   = 0x1000000000000000;
-        default_board.bitboards[BLACK_PAWN]   = 0x000000000000ff00;
-        default_board.bitboards[BLACK_KNIGHT] = 0x0000000000000042;
-        default_board.bitboards[BLACK_BISHOP] = 0x0000000000000024;
-        default_board.bitboards[BLACK_ROOK]   = 0x0000000000000081;
-        default_board.bitboards[BLACK_QUEEN]  = 0x0000000000000008;
-        default_board.bitboards[BLACK_KING]   = 0x0000000000000010;
-        return default_board;
+        BoardState b{};
+
+        b.bitboards[WHITE_PAWN]   = bit(sq('a', 2)) | bit(sq('b', 2)) | bit(sq('c', 2)) | bit(sq('d', 2)) | bit(sq('e', 2)) | bit(sq('f', 2)) | bit(sq('g', 2)) | bit(sq('h', 2));
+        b.bitboards[WHITE_KNIGHT] = bit(sq('b', 1)) | bit(sq('g', 1));
+        b.bitboards[WHITE_BISHOP] = bit(sq('c', 1)) | bit(sq('f', 1));
+        b.bitboards[WHITE_ROOK]   = bit(sq('a', 1)) | bit(sq('h', 1));
+        b.bitboards[WHITE_QUEEN]  = bit(sq('d', 1));
+        b.bitboards[WHITE_KING]   = bit(sq('e', 1));
+        b.bitboards[BLACK_PAWN]   = bit(sq('a', 7)) | bit(sq('b', 7)) | bit(sq('c', 7)) | bit(sq('d', 7)) | bit(sq('e', 7)) | bit(sq('f', 7)) | bit(sq('g', 7)) | bit(sq('h', 7));
+        b.bitboards[BLACK_KNIGHT] = bit(sq('b', 8)) | bit(sq('g', 8));
+        b.bitboards[BLACK_BISHOP] = bit(sq('c', 8)) | bit(sq('f', 8));
+        b.bitboards[BLACK_ROOK]   = bit(sq('a', 8)) | bit(sq('h', 8));
+        b.bitboards[BLACK_QUEEN]  = bit(sq('d', 8));
+        b.bitboards[BLACK_KING]   = bit(sq('e', 8));
+
+        for (const auto& p : WHITE_PIECES) {
+            b.occupancy[WHITE] |= b.bitboards[p];
+        }
+        for (const auto& p : BLACK_PIECES) {
+            b.occupancy[BLACK] |= b.bitboards[p];
+        }
+        b.all_pieces = b.occupancy[WHITE] | b.occupancy[BLACK];
+
+        b.castling_rights[WHITE] = KINGSIDE_CASTLE | QUEENSIDE_CASTLE;
+        b.castling_rights[BLACK] = KINGSIDE_CASTLE | QUEENSIDE_CASTLE;
+
+        return b;
     }
 
-    PieceType BoardState::piece_at(const uint8_t pos) const {
-        const uint64_t mask = static_cast<uint64_t>(1) << pos;
-        for (const auto i : ALL_PIECES) {
+    Type BoardState::piece_at(const Square pos) const {
+        const uint64_t mask = bit(pos);
+        for (const auto i: ALL_PIECES) {
             if (bitboards[i] & mask) {
                 return i;
             }
         }
-        return EMPTY;
+        return NONE;
     }
 
-    void BoardState::set_at(const PieceType piece, const uint8_t pos) {
-        const uint64_t mask = static_cast<uint64_t>(1) << pos;
-        for (const auto i : ALL_PIECES) {
+    void BoardState::set_at(const Type piece, const Square pos) {
+        const uint64_t mask = bit(pos);
+        for (const auto i: ALL_PIECES) {
             if (i == piece) {
                 bitboards[i] |= mask;
             } else {
                 bitboards[i] &= ~mask;
             }
         }
+    }
+
+    void BoardState::apply_mask(const Type piece, const Board mask) {
+        bitboards[piece] ^= mask;
+        occupancy[get_piece_colour(piece)] ^= mask;
+        all_pieces ^= mask;
     }
 }
