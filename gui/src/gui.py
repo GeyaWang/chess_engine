@@ -169,25 +169,7 @@ class Gui:
                     print(f"Invalid move from engine: {engine_move}")
 
         self.held_piece = None
-    #     if self._is_holding_piece and self._hold_piece is not None:
-    #         pos1 = self._hold_piece.get_pos()
-    #         mouse_pos = pygame.mouse.get_pos()
-    #         pos2 = (mouse_pos[0] // SQUARE_WIDTH, mouse_pos[1] // SQUARE_HEIGHT)
-    #
-    #         self._is_holding_piece = False
-    #         self._non_hold_piece_list.add(self._hold_piece)
-    #         self._hold_piece = None
-    #
-    #         # Move piece
-    #         if self._game.try_move(pos1, pos2):
-    #             self._piece_list.update()
-    #
-    #             if self._game.is_game_over():
-    #                 print("Checkmate!")
-    #                 self.is_over = True
-    #
-    #             self._get_and_play_engine_move(pos1, pos2)
-    #
+
     def _on_mouse_down(self) -> None:
         square = self._get_mouse_square()
         piece = self._board.piece_at(square)
