@@ -26,9 +26,15 @@ int main() {
 
     Game game{};
     draw_board(game.get_current_board());
-    game.make_move({parse("e2"), parse("e3"), WHITE_PAWN, NONE, NONE, static_cast<MoveType>(0)});
-    game.make_move({parse("f1"), parse("e2"), WHITE_BISHOP, NONE, NONE, static_cast<MoveType>(0)});
-    game.make_move({parse("g1"), parse("f3"), WHITE_KNIGHT, NONE, NONE, static_cast<MoveType>(0)});
-    game.make_move({parse("e1"), parse("g1"), WHITE_KING, NONE, NONE, CASTLE});
+    // game.make_move({parse("e2"), parse("e3"), WHITE_PAWN, NONE, NONE, static_cast<MoveType>(0)});
+    // game.make_move({parse("f1"), parse("e2"), WHITE_BISHOP, NONE, NONE, static_cast<MoveType>(0)});
+    // game.make_move({parse("g1"), parse("f3"), WHITE_KNIGHT, NONE, NONE, static_cast<MoveType>(0)});
+    // game.make_move({parse("e1"), parse("g1"), WHITE_KING, NONE, NONE, CASTLE});
+
+    game.make_move({parse("h2"), parse("h3"), WHITE_PAWN, NONE, NONE, static_cast<MoveType>(0)});
+    game.make_move({parse("h7"), parse("h6"), BLACK_PAWN, NONE, NONE, static_cast<MoveType>(0)});
+    game.make_move({parse("h1"), parse("h2"), WHITE_ROOK, NONE, NONE, static_cast<MoveType>(0)});
+    game.make_move({parse("h8"), parse("h7"), BLACK_ROOK, NONE, NONE, static_cast<MoveType>(0)});
+    std::cout << (game.get_current_board().castling_rights[BLACK] & KINGSIDE_CASTLE) << "\n";
     draw_board(game.get_current_board());
 }
