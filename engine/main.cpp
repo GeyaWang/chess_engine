@@ -140,7 +140,7 @@ void gui_mode() {
 
             const auto [nodes_searched, best_move] = search.best_move(game, 4);
             game.make_move(best_move);
-            std::cout << "move " << square_to_str(best_move.from) << square_to_str(best_move.to) << piece_to_str(best_move.promotion) << "\n";
+            std::cout << "bestmove " << square_to_str(best_move.from) << square_to_str(best_move.to) << piece_to_str(best_move.promotion) << "\n";
         }
         else {
             std::cout << "ERROR Unknown command: '" << msg << "'\n";

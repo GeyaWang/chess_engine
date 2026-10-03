@@ -197,7 +197,7 @@ class EngineGui(Gui):
         print(f"Received: {msg_rec.strip()}")
 
         engine_msg = msg_rec.strip().split(' ')
-        if engine_msg[0] != "move":
+        if engine_msg[0] != "bestmove":
             return None
 
         return chess.Move.from_uci(engine_msg[1])
