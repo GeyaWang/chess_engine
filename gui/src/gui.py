@@ -1,3 +1,4 @@
+from typing import Optional
 from dataclasses import dataclass
 import pygame
 import pathlib
@@ -118,49 +119,55 @@ class Gui:
         mouse_x, mouse_y = pygame.mouse.get_pos()
         self.screen.blit(img, (mouse_x - SQUARE_WIDTH // 2, mouse_y - SQUARE_HEIGHT // 2))
 
-    # def _get_and_play_engine_move(self, pos1, pos2):
-    #     # Send move to engine
-    #     msg_send = f"move {coord_to_algebraic(pos1)} {coord_to_algebraic(pos2)}"
-    #     self._engine.write(msg_send)
-    #     print(f"Sent: {msg_send.strip()}")
-    #     msg_rec = self._engine.listen()
-    #     print(f"Received: {msg_rec.strip()}")
-    #
-    #     engine_msg = msg_rec.split(' ')
-    #     engine_pos1 = engine_msg[1]
-    #     engine_pos2 = engine_msg[2]
-    #     print(algebraic_to_coord(engine_pos1), algebraic_to_coord(engine_pos2))
-    #
-    #     if self._game.try_move(algebraic_to_coord(engine_pos1), algebraic_to_coord(engine_pos2)):
-    #         self._piece_list.update()
-    #     else:
-    #         print(f"Invalid move received by client: {engine_pos1} {engine_pos2}")
-    #         self.is_over = True
-    #
-    #     if self._game.is_game_over():
-    #         print("Checkmate!")
-    #         self.is_over = True
-
-    def _try_play_move(self):
-        from_square = chess.square(self.held_piece.file, self.held_piece.rank)
-        to_square = self._get_mouse_square()
+    @staticmethod
+    def _get_move(from_square: chess.Square, to_square: chess.Square) -> Optional[chess.Move]:
         if from_square == to_square:
-            return
+            return None
 
         from_alg = chess.square_name(from_square)
         to_alg = chess.square_name(to_square)
-        print(f"move={from_alg + to_alg}")
-        move = chess.Move.from_uci(from_alg + to_alg)
+        return chess.Move.from_uci(from_alg + to_alg)
 
+    def _try_play_move(self, move: chess.Move) -> bool:
         if move in self._board.legal_moves:
             self._board.push(move)
             self.prev_move = move
+            return True
+        return False
+
+    def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
+        uci_move = move.uci()
+        msg_send = f"move {uci_move[:2]} {uci_move[2:]}"
+        self._engine.write(msg_send)
+        print(f"Sent: {msg_send.strip()}")
+        msg_rec = self._engine.listen()
+        print(f"Received: {msg_rec.strip()}")
+
+        engine_msg = msg_rec.strip().split(' ')
+        if engine_msg[0] != "move":
+            return None
+
+        engine_move_from = engine_msg[1]
+        engine_move_to = engine_msg[2]
+        return chess.Move.from_uci(engine_move_from + engine_move_to)
 
     def _on_mouse_up(self) -> None:
         if self.held_piece is None:
             return
 
-        self._try_play_move()
+        move = self._get_move(
+            chess.square(self.held_piece.file, self.held_piece.rank),
+            self._get_mouse_square()
+        )
+
+        is_played = self._try_play_move(move)
+        if is_played:
+            engine_move = self._get_engine_move(self.prev_move)
+            if engine_move is not None:
+                is_engine_move_valid = self._try_play_move(engine_move)
+                if not is_engine_move_valid:
+                    print(f"Invalid move from engine: {engine_move}")
+
         self.held_piece = None
     #     if self._is_holding_piece and self._hold_piece is not None:
     #         pos1 = self._hold_piece.get_pos()
