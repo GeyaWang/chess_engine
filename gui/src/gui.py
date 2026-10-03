@@ -43,8 +43,7 @@ class Gui:
     }
 
 
-    def __init__(self, engine: Engine):
-        self._engine = engine
+    def __init__(self):
         self._board = chess.Board()
         self._clock = pygame.time.Clock()
 
@@ -119,13 +118,18 @@ class Gui:
         mouse_x, mouse_y = pygame.mouse.get_pos()
         self.screen.blit(img, (mouse_x - SQUARE_WIDTH // 2, mouse_y - SQUARE_HEIGHT // 2))
 
-    @staticmethod
-    def _get_move(from_square: chess.Square, to_square: chess.Square) -> Optional[chess.Move]:
+    def _get_move(self, from_square: chess.Square, to_square: chess.Square) -> Optional[chess.Move]:
         if from_square == to_square:
             return None
 
         from_alg = chess.square_name(from_square)
         to_alg = chess.square_name(to_square)
+
+        # If promotion, promote to queen
+        rank = chess.square_rank(to_square)
+        if rank == 0 or rank == 7 and self._board.piece_at(from_square).piece_type == chess.PAWN:
+            return chess.Move.from_uci(from_alg + to_alg + "q")
+
         return chess.Move.from_uci(from_alg + to_alg)
 
     def _try_play_move(self, move: chess.Move) -> bool:
@@ -134,6 +138,55 @@ class Gui:
             self.prev_move = move
             return True
         return False
+
+    def _on_mouse_up(self) -> None:
+        if self.held_piece is None:
+            return
+
+        move = self._get_move(
+            chess.square(self.held_piece.file, self.held_piece.rank),
+            self._get_mouse_square()
+        )
+        self._try_play_move(move)
+
+        self.held_piece = None
+
+    def _on_mouse_down(self) -> None:
+        square = self._get_mouse_square()
+        piece = self._board.piece_at(square)
+        if piece is None:
+            return
+
+        rank, file = self._get_rank_file(square)
+        self.held_piece = HeldPiece(rank, file, piece)
+
+    def run(self) -> None:
+        self.running = True
+
+        while self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    self._on_mouse_up()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    self._on_mouse_down()
+
+            # Draw board
+            self._draw_board()
+            self._draw_pieces()
+            self._draw_held_piece()
+
+            pygame.display.flip()
+            self._clock.tick(FPS)
+
+        pygame.quit()
+
+
+class EngineGui(Gui):
+    def __init__(self, engine: Engine):
+        super().__init__()
+        self._engine = engine
 
     def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
         uci_move = move.uci()
@@ -159,6 +212,7 @@ class Gui:
             chess.square(self.held_piece.file, self.held_piece.rank),
             self._get_mouse_square()
         )
+        self.held_piece = None
 
         is_played = self._try_play_move(move)
         if is_played:
@@ -168,36 +222,6 @@ class Gui:
                 if not is_engine_move_valid:
                     print(f"Invalid move from engine: {engine_move}")
 
-        self.held_piece = None
-
-    def _on_mouse_down(self) -> None:
-        square = self._get_mouse_square()
-        piece = self._board.piece_at(square)
-        if piece is None:
-            return
-
-        rank, file = self._get_rank_file(square)
-        self.held_piece = HeldPiece(rank, file, piece)
-
     def run(self) -> None:
-        self.running = True
         self._engine.write("gui")
-
-        while self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    self._on_mouse_up()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    self._on_mouse_down()
-
-            # Draw board
-            self._draw_board()
-            self._draw_pieces()
-            self._draw_held_piece()
-
-            pygame.display.flip()
-            self._clock.tick(FPS)
-
-        pygame.quit()
+        super().run()
