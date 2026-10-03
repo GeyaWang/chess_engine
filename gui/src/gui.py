@@ -197,10 +197,13 @@ class EngineGui(Gui):
         print(f"Received: {msg_rec.strip()}")
 
         engine_msg = msg_rec.strip().split(' ')
-        if engine_msg[0] != "bestmove":
+        if engine_msg[0] == "error":
             return None
-
-        return chess.Move.from_uci(engine_msg[1])
+        elif engine_msg[1] == "bestmove":
+            return chess.Move.from_uci(engine_msg[1])
+        else:
+            print("Unknown command received from engine")
+            return None
 
     def _on_mouse_up(self) -> None:
         if self.held_piece is None:

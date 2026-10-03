@@ -123,18 +123,18 @@ void gui_mode() {
         }
         if (prefix == "move") {
             if (string_list.size() <= 1) {
-                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
+                std::cout << "error Invalid move from client, msg: '" << msg << "'\n";
             }
 
             const auto parsed_move = parse_uci_move(string_list.at(1));
             if (!parsed_move.has_value()) {
-                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
+                std::cout << "error Invalid move from client, msg: '" << msg << "'\n";
                 continue;
             }
 
             const auto [from_square, to_square, promotion] = parsed_move.value();
             if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
-                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
+                std::cout << "error Invalid move from client, msg: '" << msg << "'\n";
                 continue;
             }
 
@@ -143,7 +143,7 @@ void gui_mode() {
             std::cout << "bestmove " << square_to_str(best_move.from) << square_to_str(best_move.to) << piece_to_str(best_move.promotion) << "\n";
         }
         else {
-            std::cout << "ERROR Unknown command: '" << msg << "'\n";
+            std::cout << "error Unknown command: '" << msg << "'\n";
         }
     }
 }
