@@ -127,7 +127,7 @@ class Gui:
 
         # If promotion, promote to queen
         rank = chess.square_rank(to_square)
-        if rank == 0 or rank == 7 and self._board.piece_at(from_square).piece_type == chess.PAWN:
+        if (rank == 0 or rank == 7) and self._board.piece_at(from_square).piece_type == chess.PAWN:
             return chess.Move.from_uci(from_alg + to_alg + "q")
 
         return chess.Move.from_uci(from_alg + to_alg)
@@ -190,11 +190,7 @@ class EngineGui(Gui):
 
     def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
         uci_move = move.uci()
-        if move.promotion is None:
-            msg_send = f"move {uci_move[:2]} {uci_move[2:]}"
-        else:
-            msg_send = f"move {uci_move[:2]} {uci_move[2:4]} {uci_move[4:]}"
-
+        msg_send = f"move {uci_move}"
         self._engine.write(msg_send)
         print(f"Sent: {msg_send.strip()}")
         msg_rec = self._engine.listen()
@@ -204,9 +200,7 @@ class EngineGui(Gui):
         if engine_msg[0] != "move":
             return None
 
-        engine_move_from = engine_msg[1]
-        engine_move_to = engine_msg[2]
-        return chess.Move.from_uci(engine_move_from + engine_move_to)
+        return chess.Move.from_uci(engine_msg[1])
 
     def _on_mouse_up(self) -> None:
         if self.held_piece is None:

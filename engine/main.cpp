@@ -1,8 +1,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <optional>
 #include <chess/game.hpp>
 #include <engine/search.hpp>
+
+
+constexpr mf::chess::Square ERR_SQUARE = 64;
 
 
 std::vector<std::string> parse_msg(const std::string& msg) {
@@ -21,25 +25,24 @@ std::vector<std::string> parse_msg(const std::string& msg) {
 }
 
 
-uint8_t parse_square(const std::string& s) {
-    if (s.length() != 2) {
-        throw std::invalid_argument("Algebraic notation must be given");
+mf::chess::Square parse_square(const char file, const char rank) {
+    if (file < 'a' || file > 'h' || rank < '1' || rank > '8') {
+        return ERR_SQUARE;
     }
-    const uint8_t x = s[0] - 'a';
-    const uint8_t y = 7 - (s[1] - '1');
-    if (x < 0 || x >= 8 || y < 0 || y >= 8) {
-        throw std::invalid_argument("Algebraic notation must be given");
-    }
-    return y * 8 + x;
+
+    const uint8_t x = file - 'a';
+    const uint8_t y = 7 - (rank - '1');
+    return x + y * 8;
 }
 
 
-mf::chess::PieceType parse_piece(const std::string& s) {
-    if (s == "n") return mf::chess::WHITE_KNIGHT;
-    if (s == "b") return mf::chess::WHITE_BISHOP;
-    if (s == "r") return mf::chess::WHITE_ROOK;
-    if (s == "q") return mf::chess::WHITE_QUEEN;
-    throw std::invalid_argument("Invalid piece str given");
+mf::chess::PieceType parse_piece(const char c) {
+    if (c == 'n') return mf::chess::WHITE_KNIGHT;
+    if (c == 'b') return mf::chess::WHITE_BISHOP;
+    if (c == 'r') return mf::chess::WHITE_ROOK;
+    if (c == 'q') return mf::chess::WHITE_QUEEN;
+    if (c == 'k') return mf::chess::WHITE_KING;
+    return mf::chess::NONE;
 }
 
 
@@ -63,18 +66,45 @@ std::string piece_to_str(const mf::chess::PieceType type) {
         case mf::chess::WHITE_KING:
         case mf::chess::BLACK_KING:
             return "k";
-        default: throw std::invalid_argument("Invalid piece type given");
+        default: return "";
     }
 }
 
 
-std::string square_to_str(const uint8_t square) {
+std::string square_to_str(const mf::chess::Square square) {
+    if (square < 0 || square >= 64) {
+        return "";
+    }
+
     const uint8_t x = square % 8;
     const uint8_t y = square / 8;
 
     return std::string{
         static_cast<char>('a' + x), static_cast<char>('8' - y)
     };
+}
+
+
+struct ParsedMove {
+    mf::chess::Square from_square;
+    mf::chess::Square to_square;
+    mf::chess::PieceType promotion;
+};
+
+
+std::optional<ParsedMove> parse_uci_move(const std::string& s) {
+    if (s.size() < 4 || s.size() > 5) {
+        throw std::invalid_argument("Invalid uci move");
+    }
+
+    const mf::chess::Square from = parse_square(s[0], s[1]);
+    const mf::chess::Square to = parse_square(s[2], s[3]);
+    if (from == ERR_SQUARE || to == ERR_SQUARE) {
+        return std::nullopt;
+    }
+
+    const mf::chess::PieceType promo = s.size() == 5 ? parse_piece(s[4]) : mf::chess::NONE;
+    return ParsedMove{from, to, promo};
 }
 
 
@@ -92,27 +122,25 @@ void gui_mode() {
             break;
         }
         if (prefix == "move") {
-            const auto& pos1 = string_list.at(1);
-            const auto& pos2 = string_list.at(2);
+            if (string_list.size() <= 1) {
+                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
+            }
 
-            if (string_list.size() >= 4) {
-                const auto& promo = string_list.at(3);
-                if (const bool is_valid_move = game.make_move(parse_square(pos1), parse_square(pos2), parse_piece(promo)); !is_valid_move) {
-                    std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
-                }
-            } else {
-                if (const bool is_valid_move = game.make_move(parse_square(pos1), parse_square(pos2), mf::chess::NONE); !is_valid_move) {
-                    std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
-                }
+            const auto parsed_move = parse_uci_move(string_list.at(1));
+            if (!parsed_move.has_value()) {
+                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
+                continue;
+            }
+
+            const auto [from_square, to_square, promotion] = parsed_move.value();
+            if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
+                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
+                continue;
             }
 
             const auto [nodes_searched, best_move] = search.best_move(game, 4);
             game.make_move(best_move);
-            if (best_move.promotion == mf::chess::NONE) {
-                std::cout << "move " << square_to_str(best_move.from) << " " << square_to_str(best_move.to) << "\n";
-            } else {
-                std::cout << "move " << square_to_str(best_move.from) << " " << square_to_str(best_move.to) << " " << piece_to_str(best_move.promotion) << "\n";
-            }
+            std::cout << "move " << square_to_str(best_move.from) << square_to_str(best_move.to) << piece_to_str(best_move.promotion) << "\n";
         }
         else {
             std::cout << "ERROR Unknown command: '" << msg << "'\n";
