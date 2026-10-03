@@ -1,7 +1,7 @@
 import os
 import argparse
 from engine import Engine
-from gui import Gui
+from gui import EngineGui, Gui
 
 
 def main():
@@ -9,14 +9,18 @@ def main():
     parser.add_argument(
         "-fp",
         "--filepath",
-        required=True,
+        required=False,
         help="filepath to chess engine",
     )
     args = parser.parse_args()
 
-    with Engine(os.path.abspath(args.filepath)) as engine:
-        gui = Gui(engine)
+    if args.filepath is None:
+        gui = Gui()
         gui.run()
+    else:
+        with Engine(os.path.abspath(args.filepath)) as engine:
+            gui = EngineGui(engine)
+            gui.run()
 
 
 
