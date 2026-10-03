@@ -439,7 +439,7 @@ namespace mf::chess {
         }
 
         if constexpr (clr == WHITE) {
-            if (board_state.castling_rights[clr] ^ KINGSIDE_CASTLE &&
+            if (board_state.castling_rights[clr] & KINGSIDE_CASTLE &&
                 !is_attacked<clr>(board_state, sq('e', 1)) &&
                 !is_attacked<clr>(board_state, sq('f', 1)) &&
                 board_state.piece_at(sq('f', 1)) == NONE &&
@@ -452,7 +452,7 @@ namespace mf::chess {
                         NONE,
                         CASTLE
                 };
-            } else if (board_state.castling_rights[clr] ^ QUEENSIDE_CASTLE &&
+            } else if (board_state.castling_rights[clr] & QUEENSIDE_CASTLE &&
                 !is_attacked<clr>(board_state, sq('e', 1))&&
                 !is_attacked<clr>(board_state, sq('d', 1)) &&
                 board_state.piece_at(sq('d', 1)) == NONE &&
@@ -467,7 +467,7 @@ namespace mf::chess {
                 };
             }
         } else {
-            if (board_state.castling_rights[clr] ^ KINGSIDE_CASTLE &&
+            if (board_state.castling_rights[clr] & KINGSIDE_CASTLE &&
                 !is_attacked<clr>(board_state, sq('e', 8)) &&
                 !is_attacked<clr>(board_state, sq('f', 8)) &&
                 board_state.piece_at(sq('f', 8)) == NONE &&
@@ -480,7 +480,7 @@ namespace mf::chess {
                         NONE,
                         CASTLE
                 };
-            } else if (board_state.castling_rights[clr] ^ QUEENSIDE_CASTLE &&
+            } else if (board_state.castling_rights[clr] & QUEENSIDE_CASTLE &&
                 !is_attacked<clr>(board_state, sq('e', 8)) &&
                 !is_attacked<clr>(board_state, sq('d', 8)) &&
                 board_state.piece_at(sq('d', 8)) == NONE &&
