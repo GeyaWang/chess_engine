@@ -71,7 +71,7 @@ void gui_mode() {
             const auto& pos2 = string_list.at(2);
 
             if (const bool is_valid_move = game.make_move(parse_square(pos1), parse_square(pos2), mf::chess::NONE); !is_valid_move) {
-                throw std::runtime_error("error invalid move by client\n");
+                std::cout << "ERROR Invalid move by client, msg: '" << msg << "'\n";
             }
 
             const auto [nodes_searched, best_move] = search.best_move(game, 4);
@@ -79,7 +79,7 @@ void gui_mode() {
             std::cout << "move " << square_to_str(best_move.from) << " " << square_to_str(best_move.to) << "\n";
         }
         else {
-            std::cout << "Unknown command: '" << msg << "'\n";
+            std::cout << "ERROR Unknown command: '" << msg << "'\n";
         }
     }
 }
