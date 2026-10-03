@@ -2,20 +2,7 @@
 #include <stdexcept>
 #include <chess/move_generator.hpp>
 
-
-namespace {
-    constexpr uint8_t parse(const std::string &s) {
-        if (s.length() != 2) {
-            throw std::invalid_argument("Algebraic notation must be given");
-        }
-        const uint8_t x = s[0] - 'a';
-        const uint8_t y = 7 - (s[1] - '1');
-        if (x < 0 || x >= 8 || y < 0 || y >= 8) {
-            throw std::invalid_argument("Algebraic notation must be given");
-        }
-        return y * 8 + x;
-    }
-}
+#include "utils/bit_operations.hpp"
 
 
 namespace mf::chess {
@@ -27,18 +14,16 @@ namespace mf::chess {
         return state_history_[current_index_];
     }
 
-    void Game::make_move(const std::string& from, const std::string& to, const Type promotion) {
-        const uint8_t from_square = parse(from);
-        const uint8_t to_square = parse(to);
-
+    bool Game::make_move(const Square from, const Square to, const PieceType promotion) {
         std::array<Move, 218> moves{};
         const int count = MoveGenerator::gen_pseudo_legal(get_current_board(), moves);
         for (int i = 0; i < count; i++) {
-            if (const Move move = moves[i]; move.from == from_square && move.to == to_square && move.promotion == promotion) {
+            if (const Move move = moves[i]; move.from == from && move.to == to && move.promotion == promotion) {
                 make_move(move);
-                break;
+                return true;
             }
         }
+        return false;
     }
 
     void Game::make_move(const Move &move) {
@@ -83,7 +68,7 @@ namespace mf::chess {
                     const uint8_t rook_from = move.to > move.from ? move.to + 1 : move.to - 2;
                     const uint8_t rook_to = move.to > move.from ? move.to - 1 : move.to + 1;
                     const uint64_t rook_move_board = bit(rook_from) | bit(rook_to);
-                    const Type rook_type = ally_clr == WHITE ? WHITE_ROOK : BLACK_ROOK;
+                    const PieceType rook_type = ally_clr == WHITE ? WHITE_ROOK : BLACK_ROOK;
                     new_state.apply_mask(rook_type, rook_move_board);
                 }
             }
@@ -108,6 +93,7 @@ namespace mf::chess {
             }
         }
 
+        new_state.hash = hash_generator_.hash(new_state);
         new_state.side_to_move = switch_colour(ally_clr);
         current_index_++;
     }
@@ -116,5 +102,28 @@ namespace mf::chess {
         if (current_index_ > 0) {
             current_index_--;
         }
+    }
+
+    TerminalState Game::get_terminal_state() {
+        const BoardState& board_state = get_current_board();
+        const Colour clr = board_state.side_to_move;
+
+        std::array<Move, 218> moves{};
+        const int move_count = MoveGenerator::gen_pseudo_legal(board_state, moves);
+
+        for (int i = 0; i < move_count; i++) {
+            make_move(moves[i]);
+            const bool is_illegal = clr == WHITE ? get_current_board().is_king_attacked(WHITE) : get_current_board().is_king_attacked(BLACK);
+            undo_move();
+
+            if (!is_illegal) {
+                return NON_TERMINAL;
+            }
+        }
+
+        // State is terminal
+        if (board_state.is_king_attacked(WHITE)) return BLACK_WIN;
+        if (board_state.is_king_attacked(BLACK)) return WHITE_WIN;
+        return DRAW;
     }
 }

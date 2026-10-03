@@ -5,7 +5,7 @@ from chess.settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR
 from chess.piece import Piece, PieceType, PieceColour
 from chess.game import Game
 from chess.engine import Engine
-from chess.utils import coord_to_algebraic
+from chess.utils import coord_to_algebraic, algebraic_to_coord
 
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -61,6 +61,7 @@ class Gui:
         pygame.display.set_caption("Chess")
         self._clock = pygame.time.Clock()
         self.running = False
+        self.is_over = False
 
         self._hold_piece = None
         self._is_holding_piece = False
@@ -110,11 +111,38 @@ class Gui:
                 return piece
         return None
 
+    def _get_and_play_engine_move(self, pos1, pos2):
+        # Send move to engine
+        msg_send = f"move {coord_to_algebraic(pos1)} {coord_to_algebraic(pos2)}"
+        self._engine.write(msg_send)
+        print(f"Sent: {msg_send.strip()}")
+        msg_rec = self._engine.listen()
+        print(f"Received: {msg_rec.strip()}")
+
+        engine_msg = msg_rec.split(' ')
+        engine_pos1 = engine_msg[1]
+        engine_pos2 = engine_msg[2]
+        print(algebraic_to_coord(engine_pos1), algebraic_to_coord(engine_pos2))
+
+        if self._game.try_move(algebraic_to_coord(engine_pos1), algebraic_to_coord(engine_pos2)):
+            self._piece_list.update()
+        else:
+            print(f"Invalid move received by client: {engine_pos1} {engine_pos2}")
+            self.is_over = True
+
+        if self._game.is_game_over():
+            print("Checkmate!")
+            self.is_over = True
+
     def _on_mouse_up(self) -> None:
         if self._is_holding_piece and self._hold_piece is not None:
             pos1 = self._hold_piece.get_pos()
             mouse_pos = pygame.mouse.get_pos()
             pos2 = (mouse_pos[0] // SQUARE_WIDTH, mouse_pos[1] // SQUARE_HEIGHT)
+
+            self._is_holding_piece = False
+            self._non_hold_piece_list.add(self._hold_piece)
+            self._hold_piece = None
 
             # Move piece
             if self._game.try_move(pos1, pos2):
@@ -122,21 +150,14 @@ class Gui:
 
                 if self._game.is_game_over():
                     print("Checkmate!")
-                    self.running = False
+                    self.is_over = True
 
-                # Send move to engine
-                msg_send = f"move {coord_to_algebraic(pos1)} {coord_to_algebraic(pos2)}"
-                self._engine.write(msg_send)
-                print(f"Sent: {msg_send.strip()}")
-                msg_rec = self._engine.listen()
-                print(f"Received: {msg_rec.strip()}")
-
-            # Reset
-            self._is_holding_piece = False
-            self._non_hold_piece_list.add(self._hold_piece)
-            self._hold_piece = None
+                self._get_and_play_engine_move(pos1, pos2)
 
     def _on_mouse_down(self) -> None:
+        if self.is_over:
+            return
+
         if not self._is_holding_piece:
             piece = self._get_piece_on_mouse()
             if piece is None:

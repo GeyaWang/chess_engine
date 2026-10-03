@@ -11,4 +11,12 @@ namespace mf::utils {
     inline uint8_t msb_index(const uint64_t x) {
         return x ? 63 - std::countl_zero(x) : 64;
     }
+
+    inline void remove_lsb(uint64_t& x) {
+        x &= x - 1;
+    }
+
+    inline uint8_t bit_index(const uint64_t board) {
+        return lsb_index(board);
+    }
 }

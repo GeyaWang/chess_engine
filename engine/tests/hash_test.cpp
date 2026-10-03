@@ -1,6 +1,6 @@
 #include <chess/game.hpp>
 #include <iostream>
-#include <bitset>
+#include <chess/zobrist_hash.hpp>
 
 
 constexpr uint8_t square(const char col, const int row) {
@@ -25,10 +25,13 @@ int main() {
     using namespace mf::chess;
 
     Game game{};
-    draw_board(game.get_current_board());
     game.make_move({parse("e2"), parse("e3"), WHITE_PAWN, NONE, NONE, static_cast<MoveType>(0)});
     game.make_move({parse("f1"), parse("e2"), WHITE_BISHOP, NONE, NONE, static_cast<MoveType>(0)});
     game.make_move({parse("g1"), parse("f3"), WHITE_KNIGHT, NONE, NONE, static_cast<MoveType>(0)});
     game.make_move({parse("e1"), parse("g1"), WHITE_KING, NONE, NONE, CASTLE});
     draw_board(game.get_current_board());
+
+    const HashGenerator hash_gen{};
+    auto hash = hash_gen.hash(game.get_current_board());
+    std::cout << "Hash: " << hash << "\n";
 }

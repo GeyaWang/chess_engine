@@ -27,12 +27,12 @@ int main() {
     using namespace mf::chess;
 
     Game game{};
-    game.make_move("e2", "e3", NONE);
-    game.make_move("a7", "a6", NONE);
-    game.make_move("f1", "e2", NONE);
-    game.make_move("a6", "a5", NONE);
-    game.make_move("g1", "f3", NONE);
-    game.make_move("a5", "a4", NONE);
+    game.make_move(parse("e2"), parse("e3"), NONE);
+    game.make_move(parse("a7"), parse("a6"), NONE);
+    game.make_move(parse("f1"), parse("e2"), NONE);
+    game.make_move(parse("a6"), parse("a5"), NONE);
+    game.make_move(parse("g1"), parse("f3"), NONE);
+    game.make_move(parse("a5"), parse("a4"), NONE);
 
     std::array<Move, 256> moves{};
     int count = MoveGenerator::gen_pseudo_legal(game.get_current_board(), moves);

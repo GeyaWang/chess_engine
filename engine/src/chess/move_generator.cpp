@@ -1,14 +1,11 @@
 #include <chess/move_generator.hpp>
 #include <utils/bit_operations.hpp>
 #include <chess/piece_attacks.hpp>
+#include <iostream>
 
 
 namespace mf::chess {
     namespace {
-        void remove_lsb(uint64_t& x) {
-            x &= x - 1;
-        }
-
         uint64_t shift_pawn_single(const uint64_t board, const Colour clr) {
             return clr == WHITE ? board >> 8 : board << 8;
         }
@@ -28,10 +25,6 @@ namespace mf::chess {
         consteval uint64_t file_board(const char f)
         {
             return static_cast<uint64_t>(0x0101010101010101) << (f - 'a');
-        }
-
-        uint8_t bit_index(const uint64_t board) {
-            return utils::lsb_index(board);
         }
 
         uint8_t closest_diagonal_ray_blocker(const uint64_t blockers, const DiagonalDirection d) {
@@ -54,28 +47,40 @@ namespace mf::chess {
 
     int MoveGenerator::gen_pseudo_legal(const BoardState& board_state, const std::span<Move> moves) {
         int count = 0;
-        generate_pawn_quiet_moves(board_state, moves, count);
-        generate_pawn_captures(board_state, moves, count);
-        generate_knight_moves(board_state, moves, count);
-        generate_bishop_moves(board_state, moves, count);
-        generate_rook_moves(board_state, moves, count);
-        generate_queen_moves(board_state, moves, count);
-        generate_king_moves(board_state, moves, count);
+        if (board_state.side_to_move == WHITE) {
+            generate_pawn_quiet_moves<WHITE>(board_state, moves, count);
+            generate_pawn_captures<WHITE>(board_state, moves, count);
+            generate_knight_moves<WHITE>(board_state, moves, count);
+            generate_bishop_moves<WHITE>(board_state, moves, count);
+            generate_rook_moves<WHITE>(board_state, moves, count);
+            generate_queen_moves<WHITE>(board_state, moves, count);
+            generate_king_moves<WHITE>(board_state, moves, count);
+        } else {
+            generate_pawn_quiet_moves<BLACK>(board_state, moves, count);
+            generate_pawn_captures<BLACK>(board_state, moves, count);
+            generate_knight_moves<BLACK>(board_state, moves, count);
+            generate_bishop_moves<BLACK>(board_state, moves, count);
+            generate_rook_moves<BLACK>(board_state, moves, count);
+            generate_queen_moves<BLACK>(board_state, moves, count);
+            generate_king_moves<BLACK>(board_state, moves, count);
+        }
         return count;
     }
 
-    bool MoveGenerator::is_attacked(const BoardState& board_state, const Square square, const Colour colour) {
+    template<Colour clr>
+    bool MoveGenerator::is_attacked(const BoardState& board_state, const Square square) {
         return
-            is_attacked_by_diagonal(board_state, square, colour) ||
-            is_attacked_by_cardinal(board_state, square, colour) ||
-            is_attacked_by_pawn(board_state, square, colour) ||
-            is_attacked_by_knight(board_state, square, colour) ||
-            is_attacked_by_king(board_state, square, colour);
+            is_attacked_by_diagonal<clr>(board_state, square) ||
+            is_attacked_by_cardinal<clr>(board_state, square) ||
+            is_attacked_by_pawn<clr>(board_state, square) ||
+            is_attacked_by_knight<clr>(board_state, square) ||
+            is_attacked_by_king<clr>(board_state, square);
     }
 
 
-    bool MoveGenerator::is_attacked_by_diagonal(const BoardState& board_state, const Square square, const Colour colour) {
-        const uint64_t attacker_board = colour == WHITE ?
+    template<Colour clr>
+    bool MoveGenerator::is_attacked_by_diagonal(const BoardState& board_state, const Square square) {
+        const uint64_t  attacker_board = clr == WHITE ?
             board_state.bitboards[BLACK_BISHOP] | board_state.bitboards[BLACK_QUEEN] :
             board_state.bitboards[WHITE_BISHOP] | board_state.bitboards[WHITE_QUEEN];
 
@@ -90,8 +95,9 @@ namespace mf::chess {
         return false;
     }
 
-    bool MoveGenerator::is_attacked_by_cardinal(const BoardState& board_state, const Square square, const Colour colour) {
-        const uint64_t attacker_board = colour == WHITE ?
+    template<Colour clr>
+    bool MoveGenerator::is_attacked_by_cardinal(const BoardState& board_state, const Square square) {
+        const uint64_t attacker_board = clr == WHITE ?
             board_state.bitboards[BLACK_ROOK] | board_state.bitboards[BLACK_QUEEN] :
             board_state.bitboards[WHITE_ROOK] | board_state.bitboards[WHITE_QUEEN];
 
@@ -106,9 +112,10 @@ namespace mf::chess {
         return false;
     }
 
-    bool MoveGenerator::is_attacked_by_pawn(const BoardState& board_state, const Square square, const Colour colour) {
-        const uint64_t attacker_board = colour == WHITE ? board_state.bitboards[BLACK_PAWN] : board_state.bitboards[WHITE_PAWN];
-        const Colour op_clr = switch_colour(colour);
+    template<Colour clr>
+    bool MoveGenerator::is_attacked_by_pawn(const BoardState& board_state, const Square square) {
+        const uint64_t attacker_board = clr == WHITE ? board_state.bitboards[BLACK_PAWN] : board_state.bitboards[WHITE_PAWN];
+        constexpr Colour op_clr = switch_colour(clr);
         const uint64_t attack_board = shift_pawn_diagonal_left(attacker_board & ~file_board('a'), op_clr) | shift_pawn_diagonal_right(attacker_board & ~file_board('h'), op_clr);
 
         if (attack_board & bit(square)) {
@@ -117,8 +124,9 @@ namespace mf::chess {
         return false;
     }
 
-    bool MoveGenerator::is_attacked_by_knight(const BoardState& board_state, const Square square, const Colour colour) {
-        const uint64_t attacker_board = colour == WHITE ? board_state.bitboards[BLACK_KNIGHT] : board_state.bitboards[WHITE_KNIGHT];
+    template<Colour clr>
+    bool MoveGenerator::is_attacked_by_knight(const BoardState& board_state, const Square square) {
+        const uint64_t attacker_board = clr == WHITE ? board_state.bitboards[BLACK_KNIGHT] : board_state.bitboards[WHITE_KNIGHT];
 
         if (KNIGHT_ATTACKS[square] & attacker_board) {
             return true;
@@ -126,8 +134,9 @@ namespace mf::chess {
         return false;
     }
 
-    bool MoveGenerator::is_attacked_by_king(const BoardState& board_state, const Square square, const Colour colour) {
-        const uint64_t attacker_board = colour == WHITE ? board_state.bitboards[BLACK_KING] : board_state.bitboards[WHITE_KING];
+    template<Colour clr>
+    bool MoveGenerator::is_attacked_by_king(const BoardState& board_state, const Square square) {
+        const uint64_t attacker_board = clr == WHITE ? board_state.bitboards[BLACK_KING] : board_state.bitboards[WHITE_KING];
 
         if (KING_ATTACKS[square] & attacker_board) {
             return true;
@@ -136,15 +145,16 @@ namespace mf::chess {
     }
 
 
-    void MoveGenerator::generate_moves(const Type type, const Colour clr, const uint8_t piece_square, const uint64_t move_board, const BoardState& board_state, std::span<Move> moves, int& index) {
+    template<Colour clr>
+    void MoveGenerator::generate_moves_from_board(const PieceType type, const uint8_t piece_square, const uint64_t move_board, const BoardState& board_state, std::span<Move> moves, int& index) {
         const uint64_t op_board = board_state.occupancy[switch_colour(clr)];
         uint64_t capture_moves = move_board & op_board;
         uint64_t quiet_moves = move_board & ~op_board;
 
         while (capture_moves) {
             const uint8_t target_square = utils::lsb_index(capture_moves);
-            remove_lsb(capture_moves);
-            const Type captured = board_state.piece_at(target_square);
+            utils::remove_lsb(capture_moves);
+            const PieceType captured = board_state.piece_at(target_square);
 
             moves[index++] = {
                 piece_square,
@@ -157,7 +167,7 @@ namespace mf::chess {
         }
         while (quiet_moves) {
             const uint8_t target_square = utils::lsb_index(quiet_moves);
-            remove_lsb(quiet_moves);
+            utils::remove_lsb(quiet_moves);
 
             moves[index++] = {
                 piece_square,
@@ -170,23 +180,23 @@ namespace mf::chess {
         }
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_knight_moves(const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Colour clr = board_state.side_to_move;
-        const Type type = clr == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
+        constexpr PieceType type = clr == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
         uint64_t board = board_state.bitboards[type];
 
         while (board) {
             const uint8_t piece_square = utils::lsb_index(board);
-            remove_lsb(board);
+            utils::remove_lsb(board);
 
             const uint64_t move_board = KNIGHT_ATTACKS[piece_square] & ~board_state.occupancy[clr];
-            generate_moves(type, clr, piece_square, move_board, board_state, moves, index);
+            generate_moves_from_board<clr>(type, piece_square, move_board, board_state, moves, index);
         }
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_pawn_quiet_moves(const BoardState& board_state, std::span<Move> moves, int& index) {
-        const Colour clr = board_state.side_to_move;
-        const Type type = clr == WHITE ? WHITE_PAWN : BLACK_PAWN;
+        constexpr PieceType type = clr == WHITE ? WHITE_PAWN : BLACK_PAWN;
         const uint64_t board = board_state.bitboards[type];
 
         const uint64_t pawn_double_board = clr == WHITE ? rank_board(4) : rank_board(5);
@@ -201,7 +211,7 @@ namespace mf::chess {
 
         while (non_promotion_move_board) {
             const uint8_t target_square = utils::lsb_index(non_promotion_move_board);
-            remove_lsb(non_promotion_move_board);
+            utils::remove_lsb(non_promotion_move_board);
             const uint8_t piece_square = target_square - pawn_direction;
 
             moves[index++] = {
@@ -216,7 +226,7 @@ namespace mf::chess {
 
         while (promotion_move_board) {
             const uint8_t target_square = utils::lsb_index(promotion_move_board);
-            remove_lsb(promotion_move_board);
+            utils::remove_lsb(promotion_move_board);
             const uint8_t piece_square = target_square - pawn_direction;
 
             for (const auto promotion_piece : promotion_pieces) {
@@ -233,7 +243,7 @@ namespace mf::chess {
 
         while (double_move_board) {
             const uint8_t target_square = utils::lsb_index(double_move_board);
-            remove_lsb(double_move_board);
+            utils::remove_lsb(double_move_board);
             const uint8_t piece_square = target_square - pawn_direction * 2;
 
             moves[index++] = {
@@ -247,24 +257,24 @@ namespace mf::chess {
         }
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_pawn_captures(const BoardState& board_state, std::span<Move> moves, int& index) {
-        const Colour clr = board_state.side_to_move;
-        const Colour op_clr = switch_colour(clr);
-        const Type type = clr == WHITE ? WHITE_PAWN : BLACK_PAWN;
+        constexpr Colour op_clr = switch_colour(clr);
+        constexpr PieceType type = clr == WHITE ? WHITE_PAWN : BLACK_PAWN;
         const uint64_t board = board_state.bitboards[type];
 
-        const uint64_t promotion_board = clr == WHITE ? rank_board(8) : rank_board(1);
-        const auto pawn_direction = clr == WHITE ? WHITE_PAWN_DIRECTION : BLACK_PAWN_DIRECTION;
-        const auto promotion_pieces = clr == WHITE ? WHITE_PROMOTION_PIECES : BLACK_PROMOTION_PIECES;
+        constexpr uint64_t promotion_board = clr == WHITE ? rank_board(8) : rank_board(1);
+        constexpr auto pawn_direction = clr == WHITE ? WHITE_PAWN_DIRECTION : BLACK_PAWN_DIRECTION;
+        constexpr auto promotion_pieces = clr == WHITE ? WHITE_PROMOTION_PIECES : BLACK_PROMOTION_PIECES;
 
         // Check for en-passent
         if (board_state.en_passent_target) {
-            const uint8_t en_passent_square = bit_index(board_state.en_passent_target);
-            const Type captured = clr == WHITE ? BLACK_PAWN : WHITE_PAWN;
+            const uint8_t en_passent_square = utils::bit_index(board_state.en_passent_target);
+            const PieceType captured = clr == WHITE ? BLACK_PAWN : WHITE_PAWN;
 
             // Check diagonal left and diagonal right of en_passent square for a pawn
             if (const uint64_t diagonal_left_piece_board = shift_pawn_diagonal_left(board_state.en_passent_target, op_clr); diagonal_left_piece_board & board) {
-                const uint8_t piece_square = bit_index(diagonal_left_piece_board);
+                const uint8_t piece_square = utils::bit_index(diagonal_left_piece_board);
                 moves[index++] = {
                     piece_square,
                     en_passent_square,
@@ -275,7 +285,7 @@ namespace mf::chess {
                 };
             }
             if (const uint64_t diagonal_right_piece_board = shift_pawn_diagonal_right(board_state.en_passent_target, op_clr); diagonal_right_piece_board & board) {
-                const uint8_t piece_square = bit_index(diagonal_right_piece_board);
+                const uint8_t piece_square = utils::bit_index(diagonal_right_piece_board);
                 moves[index++] = {
                     piece_square,
                     en_passent_square,
@@ -290,10 +300,10 @@ namespace mf::chess {
         auto left_attack_move_board = shift_pawn_diagonal_left(board & ~file_board('a'), clr) & board_state.occupancy[op_clr];
         while (left_attack_move_board) {
             const uint8_t target_square = utils::lsb_index(left_attack_move_board);
-            remove_lsb(left_attack_move_board);
+            utils::remove_lsb(left_attack_move_board);
 
             const uint8_t piece_square = target_square - pawn_direction + 1;
-            const Type captured = board_state.piece_at(target_square);
+            const PieceType captured = board_state.piece_at(target_square);
 
             if (const uint64_t piece_map = bit(target_square); promotion_board & piece_map) {
                 for (const auto promotion_piece : promotion_pieces) {
@@ -321,10 +331,10 @@ namespace mf::chess {
         auto right_attack_move_board = shift_pawn_diagonal_right(board & ~file_board('h'), clr) & board_state.occupancy[op_clr];
         while (right_attack_move_board) {
             const uint8_t target_square = utils::lsb_index(right_attack_move_board);
-            remove_lsb(right_attack_move_board);
+            utils::remove_lsb(right_attack_move_board);
 
             const uint8_t piece_square = target_square - pawn_direction - 1;
-            const Type captured = board_state.piece_at(target_square);
+            const PieceType captured = board_state.piece_at(target_square);
 
             if (const uint64_t piece_map = bit(target_square); promotion_board & piece_map) {
                 for (const auto promotion_piece : promotion_pieces) {
@@ -350,116 +360,139 @@ namespace mf::chess {
         }
     }
 
-    void MoveGenerator::generate_diagonal_moves(const Type type, const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Colour clr = board_state.side_to_move;
+    template<Colour clr>
+    void MoveGenerator::generate_diagonal_moves(const PieceType type, const BoardState& board_state, const std::span<Move> moves, int& index) {
         auto board = board_state.bitboards[type];
 
         while (board) {
             const uint8_t piece_square = utils::lsb_index(board);
-            remove_lsb(board);
+            utils::remove_lsb(board);
 
             uint64_t move_board = 0;
             for (const auto d : DIAGONAL_DIRECTIONS) {
                 const uint64_t ray = DIAGONAL_ATTACKS[d][piece_square];
                 if (const uint64_t blockers = board_state.all_pieces & ray) {
                     move_board |= ray & ~DIAGONAL_ATTACKS[d][closest_diagonal_ray_blocker(blockers, d)];
+                } else {
+                    move_board |= ray;
                 }
             }
             move_board &= ~board_state.occupancy[clr];
 
-            generate_moves(type, clr, piece_square, move_board, board_state, moves, index);
+            generate_moves_from_board<clr>(type, piece_square, move_board, board_state, moves, index);
         }
     }
 
-    void MoveGenerator::generate_cardinal_moves(const Type type, const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Colour clr = board_state.side_to_move;
+    template<Colour clr>
+    void MoveGenerator::generate_cardinal_moves(const PieceType type, const BoardState& board_state, const std::span<Move> moves, int& index) {
         auto board = board_state.bitboards[type];
 
         while (board) {
             const uint8_t piece_square = utils::lsb_index(board);
-            remove_lsb(board);
+            utils::remove_lsb(board);
 
             uint64_t move_board = 0;
             for (const auto d : CARDINAL_DIRECTIONS) {
                 const uint64_t ray = CARDINAL_ATTACKS[d][piece_square];
                 if (const uint64_t blockers = board_state.all_pieces & ray) {
                     move_board |= ray & ~CARDINAL_ATTACKS[d][closest_cardinal_ray_blocker(blockers, d)];
+                } else {
+                    move_board |= ray;
                 }
             }
             move_board &= ~board_state.occupancy[clr];
 
-            generate_moves(type, clr, piece_square, move_board, board_state, moves, index);
+            generate_moves_from_board<clr>(type, piece_square, move_board, board_state, moves, index);
         }
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_bishop_moves(const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Type type = board_state.side_to_move == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
-        generate_diagonal_moves(type, board_state, moves, index);
+        constexpr PieceType type = clr == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
+        generate_diagonal_moves<clr>(type, board_state, moves, index);
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_rook_moves(const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Type type = board_state.side_to_move == WHITE ? WHITE_ROOK : BLACK_ROOK;
-        generate_cardinal_moves(type, board_state, moves, index);
+        constexpr PieceType type = clr == WHITE ? WHITE_ROOK : BLACK_ROOK;
+        generate_cardinal_moves<clr>(type, board_state, moves, index);
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_queen_moves(const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Type type = board_state.side_to_move == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
-        generate_diagonal_moves(type, board_state, moves, index);
-        generate_cardinal_moves(type, board_state, moves, index);
+        constexpr PieceType type = clr == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
+        generate_diagonal_moves<clr>(type, board_state, moves, index);
+        generate_cardinal_moves<clr>(type, board_state, moves, index);
     }
 
+    template<Colour clr>
     void MoveGenerator::generate_king_moves(const BoardState& board_state, const std::span<Move> moves, int& index) {
-        const Colour clr = board_state.side_to_move;
-        const Type type = clr == WHITE ? WHITE_KING : BLACK_KING;
+        constexpr PieceType type = clr == WHITE ? WHITE_KING : BLACK_KING;
         uint64_t board = board_state.bitboards[type];
 
         while (board) {
             const uint8_t piece_square = utils::lsb_index(board);
-            remove_lsb(board);
+            utils::remove_lsb(board);
 
             const uint64_t move_board = KING_ATTACKS[piece_square] & ~board_state.occupancy[clr];
-            generate_moves(type, clr, piece_square, move_board, board_state, moves, index);
+            generate_moves_from_board<clr>(type, piece_square, move_board, board_state, moves, index);
         }
 
-        if (clr == WHITE) {
-            if (board_state.castling_rights[clr] ^ KINGSIDE_CASTLE && !is_attacked(board_state, sq('e', 1), clr) && !is_attacked(board_state, sq('f', 1), clr)) {
-                moves[index++] = {
-                    sq('e', 1),
-                    sq('g', 1),
-                    type,
-                    NONE,
-                    NONE,
-                    CASTLE
+        if constexpr (clr == WHITE) {
+            if (board_state.castling_rights[clr] ^ KINGSIDE_CASTLE &&
+                !is_attacked<clr>(board_state, sq('e', 1)) &&
+                !is_attacked<clr>(board_state, sq('f', 1)) &&
+                board_state.piece_at(sq('f', 1)) == NONE &&
+                board_state.piece_at(sq('g', 1)) == NONE) {
+                    moves[index++] = {
+                        sq('e', 1),
+                        sq('g', 1),
+                        type,
+                        NONE,
+                        NONE,
+                        CASTLE
                 };
-            } else if (board_state.castling_rights[clr] ^ QUEENSIDE_CASTLE && !is_attacked(board_state, sq('e', 1), clr) && !is_attacked(board_state, sq('d', 1), clr)) {
-                moves[index++] = {
-                    sq('e', 1),
-                    sq('c', 1),
-                    type,
-                    NONE,
-                    NONE,
-                    CASTLE
+            } else if (board_state.castling_rights[clr] ^ QUEENSIDE_CASTLE &&
+                !is_attacked<clr>(board_state, sq('e', 1))&&
+                !is_attacked<clr>(board_state, sq('d', 1)) &&
+                board_state.piece_at(sq('d', 1)) == NONE &&
+                board_state.piece_at(sq('c', 1)) == NONE) {
+                    moves[index++] = {
+                        sq('e', 1),
+                        sq('c', 1),
+                        type,
+                        NONE,
+                        NONE,
+                        CASTLE
                 };
             }
         } else {
-            if (board_state.castling_rights[clr] ^ KINGSIDE_CASTLE && !is_attacked(board_state, sq('e', 8), clr) && !is_attacked(board_state, sq('f', 8), clr)) {
-                moves[index++] = {
-                    sq('e', 8),
-                    sq('g', 8),
-                    type,
-                    NONE,
-                    NONE,
-                    CASTLE
+            if (board_state.castling_rights[clr] ^ KINGSIDE_CASTLE &&
+                !is_attacked<clr>(board_state, sq('e', 8)) &&
+                !is_attacked<clr>(board_state, sq('f', 8)) &&
+                board_state.piece_at(sq('f', 8)) == NONE &&
+                board_state.piece_at(sq('g', 8)) == NONE) {
+                    moves[index++] = {
+                        sq('e', 8),
+                        sq('g', 8),
+                        type,
+                        NONE,
+                        NONE,
+                        CASTLE
                 };
-            } else if (board_state.castling_rights[clr] ^ QUEENSIDE_CASTLE && !is_attacked(board_state, sq('e', 8), clr) && !is_attacked(board_state, sq('d', 8), clr)) {
-                moves[index++] = {
-                    sq('e', 8),
-                    sq('c', 8),
-                    type,
-                    NONE,
-                    NONE,
-                    CASTLE
-                };
+            } else if (board_state.castling_rights[clr] ^ QUEENSIDE_CASTLE &&
+                !is_attacked<clr>(board_state, sq('e', 8)) &&
+                !is_attacked<clr>(board_state, sq('d', 8)) &&
+                board_state.piece_at(sq('d', 8)) == NONE &&
+                board_state.piece_at(sq('c', 8)) == NONE) {
+                    moves[index++] = {
+                        sq('e', 8),
+                        sq('c', 8),
+                        type,
+                        NONE,
+                        NONE,
+                        CASTLE
+                    };
             }
         }
     }

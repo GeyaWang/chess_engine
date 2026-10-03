@@ -1,11 +1,13 @@
 #include <chess/board_state.hpp>
+#include <chess/move_generator.hpp>
 #include <string>
 #include <iostream>
+#include <utils/bit_operations.hpp>
 
 
 namespace mf::chess {
     namespace {
-        std::string get_piece_symbol(const Type piece) {
+        std::string get_piece_symbol(const PieceType piece) {
             switch (piece) {
                 case NONE:
                     return " ";
@@ -97,7 +99,7 @@ namespace mf::chess {
         return b;
     }
 
-    Type BoardState::piece_at(const Square pos) const {
+    PieceType BoardState::piece_at(const Square pos) const {
         const uint64_t mask = bit(pos);
         for (const auto i: ALL_PIECES) {
             if (bitboards[i] & mask) {
@@ -107,7 +109,7 @@ namespace mf::chess {
         return NONE;
     }
 
-    void BoardState::set_at(const Type piece, const Square pos) {
+    void BoardState::set_at(const PieceType piece, const Square pos) {
         const uint64_t mask = bit(pos);
         for (const auto i: ALL_PIECES) {
             if (i == piece) {
@@ -118,9 +120,16 @@ namespace mf::chess {
         }
     }
 
-    void BoardState::apply_mask(const Type piece, const Board mask) {
+    void BoardState::apply_mask(const PieceType piece, const Board mask) {
         bitboards[piece] ^= mask;
         occupancy[get_piece_colour(piece)] ^= mask;
         all_pieces ^= mask;
+    }
+
+    bool BoardState::is_king_attacked(const Colour colour) const {
+        if (colour == WHITE) {
+            return MoveGenerator::is_attacked<WHITE>(*this, utils::bit_index(bitboards[WHITE_KING]));
+        }
+        return MoveGenerator::is_attacked<BLACK>(*this, utils::bit_index(bitboards[BLACK_KING]));
     }
 }

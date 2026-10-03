@@ -17,9 +17,9 @@ namespace mf::chess {
     struct Move {
         Square from = 64;
         Square to = 64;
-        Type piece = NONE;
-        Type captured = NONE;
-        Type promotion = NONE;
+        PieceType piece = NONE;
+        PieceType captured = NONE;
+        PieceType promotion = NONE;
         uint8_t move_type = 0;
 
         bool operator==(const Move& rhs) const { return from == rhs.from && to == rhs.to; }

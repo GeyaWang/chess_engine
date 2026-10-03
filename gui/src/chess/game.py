@@ -221,6 +221,11 @@ class Game:
     def get(self, x: int, y: int) -> Piece:
         return self._board.get(x, y)
 
+    def make_move(self, pos1: tuple[int, int], pos2: tuple[int, int]):
+        self._board.make_move(pos1, pos2)
+        self.turn = ~self.turn
+        self.prev_move = (pos1, pos2)
+
     def try_move(self, pos1: tuple[int, int], pos2: tuple[int, int]) -> bool:
         if pos1 == pos2:
             return False

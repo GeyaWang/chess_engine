@@ -19,7 +19,7 @@ namespace mf::chess {
         BLACK = 1
     };
 
-    enum Type : uint8_t {
+    enum PieceType : uint8_t {
         WHITE_PAWN,
         WHITE_KNIGHT,
         WHITE_BISHOP,
@@ -39,7 +39,7 @@ namespace mf::chess {
         return clr == BLACK ? WHITE : BLACK;
     }
 
-    constexpr Colour get_piece_colour(const Type piece) {
+    constexpr Colour get_piece_colour(const PieceType piece) {
         return piece < BLACK_PAWN ? WHITE : BLACK;
     }
 
@@ -63,7 +63,7 @@ namespace mf::chess {
 
     using Square = uint8_t;
     using Board = uint64_t;
-
+    using Hash = uint64_t;
 
     struct BoardState {
         std::array<Board, ALL_PIECES.size()> bitboards{};
@@ -74,11 +74,15 @@ namespace mf::chess {
         Board all_pieces{};
         std::array<uint8_t, 2> castling_rights{};
 
+        Hash hash{};
+
         static BoardState create_default();
 
-        [[nodiscard]] Type piece_at(Square pos) const;
-        void set_at(Type piece, Square pos);
-        void apply_mask(Type piece, Board mask);
+        [[nodiscard]] PieceType piece_at(Square pos) const;
+        void set_at(PieceType piece, Square pos);
+        void apply_mask(PieceType piece, Board mask);
+
+        [[nodiscard]] bool is_king_attacked(Colour colour) const;
     };
 
 

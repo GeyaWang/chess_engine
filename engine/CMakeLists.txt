@@ -29,3 +29,9 @@ target_link_libraries(game_test ${PROJECT_NAME})
 
 add_executable(move_generator_test tests/move_generator_test.cpp)
 target_link_libraries(move_generator_test ${PROJECT_NAME})
+
+add_executable(hash_test tests/hash_test.cpp)
+target_link_libraries(hash_test ${PROJECT_NAME})
+
+add_executable(search_test tests/search_test.cpp)
+target_link_libraries(search_test ${PROJECT_NAME})
