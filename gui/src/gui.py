@@ -190,7 +190,11 @@ class EngineGui(Gui):
 
     def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
         uci_move = move.uci()
-        msg_send = f"move {uci_move[:2]} {uci_move[2:]}"
+        if move.promotion is None:
+            msg_send = f"move {uci_move[:2]} {uci_move[2:]}"
+        else:
+            msg_send = f"move {uci_move[:2]} {uci_move[2:4]} {uci_move[4:]}"
+
         self._engine.write(msg_send)
         print(f"Sent: {msg_send.strip()}")
         msg_rec = self._engine.listen()
