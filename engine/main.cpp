@@ -107,6 +107,10 @@ std::optional<ParsedMove> parse_uci_move(const std::string& s) {
     return ParsedMove{from, to, promo};
 }
 
+std::string move_to_uci(const mf::chess::Move& move) {
+    return square_to_str(move.from) + square_to_str(move.to) + piece_to_str(move.promotion);
+}
+
 
 void gui_mode() {
     mf::chess::Game game{};
@@ -115,35 +119,87 @@ void gui_mode() {
     while (true) {
         std::string msg;
         std::getline(std::cin, msg);
-        const auto string_list = parse_msg(msg);
+        const auto str_list = parse_msg(msg);
 
-        const auto& prefix = string_list.at(0);
-        if (prefix == "quit") {
+        const auto& cmd = str_list.at(0);
+        if (cmd == "quit") {
             break;
-        }
-        if (prefix == "move") {
-            if (string_list.size() <= 1) {
-                std::cout << "error Invalid move from client, msg: '" << msg << "'\n";
+        } if (cmd == "move") {
+            if (str_list.size() <= 1) {
+                std::cerr << "Invalid move from client, no moves given, msg: '" << msg << "'\n";
+                std::cout << "error" << std::endl;
             }
 
-            const auto parsed_move = parse_uci_move(string_list.at(1));
+            const auto parsed_move = parse_uci_move(str_list.at(1));
             if (!parsed_move.has_value()) {
-                std::cout << "error Invalid move from client, msg: '" << msg << "'\n";
+                std::cerr << "Invalid move from client, failed uci parse, msg: '" << msg << "'\n";
+                std::cout << "error" << std::endl;
                 continue;
             }
 
             const auto [from_square, to_square, promotion] = parsed_move.value();
             if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
-                std::cout << "error Invalid move from client, msg: '" << msg << "'\n";
+                std::cerr << "Invalid move from client, move failed, msg: '" << msg << "'\n";
+                std::cout << "error" << std::endl;
                 continue;
             }
 
             const auto [nodes_searched, best_move] = search.best_move(game, 4);
             game.make_move(best_move);
-            std::cout << "bestmove " << square_to_str(best_move.from) << square_to_str(best_move.to) << piece_to_str(best_move.promotion) << "\n";
+            std::cout << "bestmove " << move_to_uci(best_move) << "\n";
+        } else {
+            std::cerr << "Unknown command: '" << msg << "'\n";
+            std::cout << "error" << std::endl;
         }
-        else {
-            std::cout << "error Unknown command: '" << msg << "'\n";
+    }
+}
+
+
+void uci_mode() {
+    std::cout << "id name Mockfish\n" << "id author Geya Wang\n" << "uciok" << std::endl;
+
+    mf::chess::Game game{};
+    mf::engine::Search search{};
+
+    while (true) {
+        std::string msg;
+        std::getline(std::cin, msg);
+        const auto str_list = parse_msg(msg);
+
+        const auto& cmd = str_list.at(0);
+        if (cmd == "uci") {
+            std::cout << "id name Mockfish\n" << "id author Geya Wang\n" << "uciok" << std::endl;
+        } else if (cmd == "isready") {
+            std::cout << "readyok" << std::endl;
+        } else if (cmd == "ucinewgame") {
+            game.restart();
+        } else if (cmd == "position") {
+            size_t i = 1;
+            if (i < str_list.size() && str_list[i] == "startpos") {
+                game.restart();
+                i++;
+            } else if (i < str_list.size() && str_list[i] == "fen") {
+                std::string fen;
+                for (i++; i < str_list.size() && str_list[i] != "moves"; i++) fen += str_list[i] + " ";
+                game.set_fen_pos(fen);
+            }
+            if (i < str_list.size() && str_list[i] == "moves") {
+                for (i++; i < str_list.size(); i++) {
+                    auto parsed_move = parse_uci_move(str_list[i]);
+                    if (!parsed_move.has_value()) {
+                        std::cerr << "error Invalid move from client, msg: '" << msg << "'" << std::endl;
+                        continue;
+                    }
+
+                    const auto [from_square, to_square, promotion] = parsed_move.value();
+                    game.make_move(from_square, to_square, promotion);
+                }
+            }
+        } else if (cmd == "go") {
+            const auto [nodes_searched, best_move] = search.best_move(game, 4);
+            std::cout << "bestmove " << move_to_uci(best_move) << "\n";
+        } else if (cmd == "quit") {
+            break;
         }
     }
 }
@@ -154,6 +210,8 @@ int main() {
     std::getline(std::cin, command);
     if (command == "gui") {
         gui_mode();
+    } else if (command == "uci") {
+        uci_mode();
     }
     return 0;
 }

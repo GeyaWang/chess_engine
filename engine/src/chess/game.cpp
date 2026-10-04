@@ -1,8 +1,7 @@
-#include "chess/game.hpp"
-#include <stdexcept>
+#include <chess/game.hpp>
+#include <sstream>
 #include <chess/move_generator.hpp>
-
-#include "utils/bit_operations.hpp"
+#include <utils/bit_operations.hpp>
 
 
 namespace mf::chess {
@@ -102,6 +101,114 @@ namespace mf::chess {
         if (current_index_ > 0) {
             current_index_--;
         }
+    }
+
+    void Game::restart() {
+        current_index_ = 0;
+        state_history_[0] = BoardState::create_default();
+        state_history_[0].hash = hash_generator_.hash(state_history_[0]);
+    }
+
+    void Game::set_fen_pos(const std::string& fen_str) {
+        BoardState board{};
+        current_index_ = 0;
+        state_history_[0] = board;
+
+        std::stringstream ss;
+        ss.str(fen_str);
+
+        std::string board_string;
+        std::string turn;
+        std::string castling;
+        std::string enpassant_target;
+        std::string half_moves;
+        std::string full_moves;
+
+        ss >> board_string;
+        ss >> turn;
+        ss >> castling;
+        ss >> enpassant_target;
+        ss >> half_moves;
+        ss >> full_moves;
+
+        // Board
+        int x = 0;
+        int y = 0;
+        for (int i = 0; i < board_string.length(); i++) {
+            char c = board_string[i];
+            Square square = x + y * 8;
+
+            if (c == '/') {
+                x = 0;
+                y++;
+            } else if (c <= '9' && c >= '0') {
+                x += c - '0';
+            } else if (c == 'p') {
+                board.set_at(BLACK_PAWN, square);
+                x++;
+            } else if (c == 'n') {
+                board.set_at(BLACK_KNIGHT, square);
+                x++;
+            } else if (c == 'b') {
+                board.set_at(BLACK_BISHOP, square);
+                x++;
+            } else if (c == 'r') {
+                board.set_at(BLACK_ROOK, square);
+                x++;
+            } else if (c == 'q') {
+                board.set_at(BLACK_QUEEN, square);
+                x++;
+            } else if (c == 'k') {
+                board.set_at(BLACK_KING, square);
+                x++;
+            } else if (c == 'P') {
+                board.set_at(WHITE_PAWN, square);
+                x++;
+            } else if (c == 'N') {
+                board.set_at(WHITE_KNIGHT, square);
+                x++;
+            } else if (c == 'B') {
+                board.set_at(WHITE_BISHOP, square);
+                x++;
+            } else if (c == 'R') {
+                board.set_at(WHITE_ROOK, square);
+                x++;
+            } else if (c == 'Q') {
+                board.set_at(WHITE_QUEEN, square);
+                x++;
+            } else if (c == 'K') {
+                board.set_at(WHITE_KING, square);
+                x++;
+            }
+        }
+
+        // Turn
+        if (turn == "b") {
+            board.side_to_move = BLACK;
+        } else {
+            board.side_to_move = WHITE;
+        }
+
+        // Castling
+        for (int i = 0; i < castling.length(); i++) {
+            if (const char c = castling[i]; c == 'K') board.castling_rights[WHITE] |= KINGSIDE_CASTLE;
+            else if (c == 'k') board.castling_rights[BLACK] |= KINGSIDE_CASTLE;
+            else if (c == 'Q') board.castling_rights[WHITE] |= QUEENSIDE_CASTLE;
+            else if (c == 'q') board.castling_rights[BLACK] |= QUEENSIDE_CASTLE;
+        }
+
+        // En-passent target
+        if (enpassant_target.length() >= 2)
+        {
+            int passant_x = enpassant_target[0] - 'a';
+            int passant_y = 7 - enpassant_target[1] + '1';
+
+            uint8_t passantSquare = passant_x + 8 * passant_y;
+            board.en_passent_target = bit(passantSquare);
+        }
+
+        // Hash
+        board.hash = hash_generator_.hash(board);
     }
 
     TerminalState Game::get_terminal_state() {

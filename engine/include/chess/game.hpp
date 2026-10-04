@@ -32,6 +32,8 @@ namespace mf::chess {
         void make_move(const Move& move);
         bool make_move(Square from, Square to, PieceType promotion);
         void undo_move();
+        void restart();
+        void set_fen_pos(const std::string& fen_str);
 
         TerminalState get_terminal_state();
     };
