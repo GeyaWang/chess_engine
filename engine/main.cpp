@@ -158,7 +158,7 @@ int main() {
             }
         }
         else if (cmd == "go") {
-            const auto [nodes_searched, best_move] = search.best_move(game, 4);
+            const auto [nodes_searched, best_move] = search.best_move(game, 5);
             if (best_move.piece == mf::chess::NONE) {
                 std::cerr << "No legal moves found, msg: '" << msg << "'\n";
                 std::cout << "error" << std::endl;

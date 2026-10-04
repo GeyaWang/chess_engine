@@ -166,8 +166,9 @@ class Gui:
             chess.square(self.held_piece.file, self.held_piece.rank),
             self._get_mouse_square()
         )
-        self._try_play_move(move)
-        self.prev_move = move
+        is_valid = self._try_play_move(move)
+        if is_valid:
+            self.prev_move = move
 
         self.held_piece = None
 
@@ -226,6 +227,7 @@ class EngineGui(Gui):
         super().__init__(fen)
         self._engine = engine
         self._is_waiting_for_engine = False
+        self._prev_prev_move = None
 
         if fen is not None:
             self._set_engine_fen(fen)
@@ -237,6 +239,7 @@ class EngineGui(Gui):
 
     def _undo_prev_move(self):
         self._board.pop()
+        self.prev_move = self._prev_prev_move
 
     def _update_engine_pos(self, move: chess.Move) -> None:
         self._engine.write(f"position moves {move.uci()}")
@@ -274,18 +277,23 @@ class EngineGui(Gui):
         self._update_engine_pos(move)
         return True
 
-    def _play_player_move(self, move: chess.Move) -> None:
-        if not self._is_waiting_for_engine and not self._board.is_game_over():
-            is_played = self._try_play_move(move)
-            if not is_played:
-                print(f"Invalid move attempted: {move}")
-                return
+    def _play_player_move(self, move: chess.Move) -> bool:
+        if self._is_waiting_for_engine or self._board.is_game_over():
+            return False
 
-            self._update_engine_pos(move)
+        is_played = self._try_play_move(move)
+        if not is_played:
+            print(f"Invalid move attempted: {move}")
+            return False
 
-            if not self._board.is_game_over():
-                self._request_engine_move()
-                self._is_waiting_for_engine = True
+        self._update_engine_pos(move)
+
+        if not self._board.is_game_over():
+            self._request_engine_move()
+            self._is_waiting_for_engine = True
+
+        return True
+
 
     def _on_mouse_up(self) -> None:
         if self.held_piece is None:
@@ -296,7 +304,10 @@ class EngineGui(Gui):
             self._get_mouse_square()
         )
         self.held_piece = None
-        self._play_player_move(move)
+        is_valid = self._play_player_move(move)
+        if is_valid:
+            self._prev_prev_move = self.prev_move
+            self.prev_move = move
 
     def _exit(self):
         super()._exit()
