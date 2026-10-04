@@ -3,7 +3,14 @@
 #include <bitset>
 #include <chess/move_generator.hpp>
 #include <engine/search.hpp>
+#include <sstream>
 
+#include "../include/chess/move.hpp"
+
+
+namespace mf::chess {
+    struct Move;
+}
 
 constexpr uint8_t square(const char col, const int row) {
     return (8 - row) * 8 + (col - 'a');
@@ -23,42 +30,39 @@ uint8_t parse(const std::string &s) {
 }
 
 
+inline std::string square_to_alg(const mf::chess::Square square) {
+    if (square < 0 || square >= 64) return "--";
+    return std::string{static_cast<char>('a' + square % 8), static_cast<char>('8' - square / 8)};
+}
+
+static constexpr char PIECE_CHARS[] = "PNBRQKpnbrqk.";
+
+
+std::string move_str(const mf::chess::Move& m) {
+    std::stringstream ss;
+    ss << "{" + square_to_alg(m.from) << "->" << square_to_alg(m.to) << ",piece=" << PIECE_CHARS[m.piece] << ",captured=" << PIECE_CHARS[m.captured] << ",promotion=" << PIECE_CHARS[m.promotion] << ",type=" << static_cast<int>(m.move_type) << "}";
+    return ss.str();
+}
+
+
 int main() {
     using namespace mf::chess;
 
     Game game{};
-    game.set_fen("7k/8/5K2/8/8/8/8/6R1 w - - 0 1");
+    game.set_fen("rnbqkbnr/pppppp1p/P7/8/8/1P6/2PPPPPp/RNBQKBNR b KQkq - 0 5");
     draw_board(game.get_current_board());
     std::cout << "turn=" << (game.get_current_board().side_to_move == WHITE) << "\n";
-    // game.make_move({parse("f1"), parse("e2"), WHITE_BISHOP, NONE, NONE, static_cast<MoveType>(0)});
-    // game.make_move({parse("g1"), parse("f3"), WHITE_KNIGHT, NONE, NONE, static_cast<MoveType>(0)});
-    // game.make_move({parse("e1"), parse("g1"), WHITE_KING, NONE, NONE, CASTLE});
 
-    // game.make_move({parse("h2"), parse("h3"), WHITE_PAWN, NONE, NONE, static_cast<MoveType>(0)});
-    // game.make_move({parse("h7"), parse("h6"), BLACK_PAWN, NONE, NONE, static_cast<MoveType>(0)});
-    // game.make_move({parse("h1"), parse("h2"), WHITE_ROOK, NONE, NONE, static_cast<MoveType>(0)});
-    // game.make_move({parse("h8"), parse("h7"), BLACK_ROOK, NONE, NONE, static_cast<MoveType>(0)});
-    // std::cout << (game.get_current_board().castling_rights[BLACK] & KINGSIDE_CASTLE) << "\n";
-    // draw_board(game.get_current_board());
+    std::array<Move, 218> moves;
+    const int count = MoveGenerator::gen_pseudo_legal(game.get_current_board(), moves);
 
-    game.make_move({parse("f6"), parse("f7"), WHITE_KING, NONE, NONE, static_cast<MoveType>(0)});
-    // game.make_move({parse("h8"), parse("h7"), BLACK_KING, NONE, NONE, static_cast<MoveType>(0)});
-
-    draw_board(game.get_current_board());
+    for (int i = 0; i < count; i++) {
+        std::cout << move_str(moves[i]) << "\n";
+    }
 
     mf::engine::Search search{};
     const auto [n, move] = search.best_move(game, 3);
-    std::cout << n << " " << move << "\n";
-
-    // std::array<Move, 256> moves{};
-    // int count = MoveGenerator::gen_pseudo_legal(game.get_current_board(), moves);
-    //
-    // for (int i = 0; i < count; i++) {
-    //     std::cout << moves[i] << "\n";
-    //     game.make_move(moves[i]);
-    //     // draw_board(game.get_current_board());
-    //     game.undo_move();
-    // }
+    std::cout << n << " " << move_str(move) << "\n";
 
     std::cout << "king_attacked = " << game.get_current_board().is_king_attacked(BLACK) << "\n";
 }

@@ -32,6 +32,6 @@ namespace mf::engine {
         std::mt19937 gen_;
 
         static int evaluate(const chess::BoardState& board_state);
-        static int minimax(chess::Game& game, int depth, uint64_t& nodes_searched);
+        static int minimax(uint64_t& nodes_searched, chess::Game& game, int depth, int alpha, int beta);
     };
 }

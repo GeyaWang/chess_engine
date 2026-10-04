@@ -104,6 +104,7 @@ std::optional<ParsedMove> parse_uci_move(const std::string& s) {
     }
 
     const mf::chess::PieceType promo = s.size() == 5 ? parse_piece(s[4]) : mf::chess::NONE;
+
     return ParsedMove{from, to, promo};
 }
 

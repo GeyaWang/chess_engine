@@ -87,13 +87,13 @@ class Gui:
         if self._is_player_white:
             return file, 7 - rank
         else:
-            return file, rank
+            return 7 - file, rank
 
     def _get_mouse_square(self):
         x, y = self._get_rel_coord(*pygame.mouse.get_pos())
         if self._is_player_white:
             return chess.square(x, 7 - y)
-        return chess.square(x, y)
+        return chess.square(7 - x, y)
 
     def _draw_square(self, x: int, y: int, surf: pygame.Surface) -> None:
         self.screen.blit(surf, self._get_real_coord(x, y))
@@ -101,7 +101,7 @@ class Gui:
     def _draw_board(self) -> None:
         for x in range(8):
             for y in range(8):
-                surf = self.LIGHT_SQUARE if (x + y + self._is_player_white) % 2 else self.DARK_SQUARE
+                surf = self.DARK_SQUARE if (x + y) % 2 else self.LIGHT_SQUARE
                 self._draw_square(x, y, surf)
 
         # Move squares
@@ -312,6 +312,7 @@ class EngineGui(Gui):
     def _exit(self):
         super()._exit()
         self._engine.write("quit")
+        print(f"FEN: \"{self._board.fen()}\"")
 
     def _handle_engine_msg(self, msg: str) -> bool:
         msg_lines = msg.split(' ')
