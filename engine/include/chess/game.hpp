@@ -35,6 +35,7 @@ namespace mf::chess {
         void restart();
         void set_fen_pos(const std::string& fen_str);
 
+        bool is_soft_draw();
         TerminalState get_terminal_state();
     };
 }

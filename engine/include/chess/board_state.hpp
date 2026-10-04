@@ -69,6 +69,7 @@ namespace mf::chess {
         std::array<Board, ALL_PIECES.size()> bitboards{};
         Board en_passent_target{};
         Colour side_to_move = WHITE;
+        uint8_t fifty_move_rule_counter = 0;
 
         std::array<Board, 2> occupancy{};
         Board all_pieces{};
