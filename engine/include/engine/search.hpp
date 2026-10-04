@@ -26,7 +26,7 @@ namespace mf::engine {
                 return std::mt19937(rd());
             }()
         ) {}
-        SearchMove best_move(chess::Game& game, int depth);
+        static SearchMove best_move(chess::Game& game, int depth);
 
     private:
         std::mt19937 gen_;

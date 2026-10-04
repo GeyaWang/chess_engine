@@ -115,7 +115,6 @@ std::string move_to_uci(const mf::chess::Move& move) {
 
 int main() {
     mf::chess::Game game{};
-    mf::engine::Search search{};
 
     while (true) {
         std::string msg;
@@ -159,7 +158,7 @@ int main() {
             }
         }
         else if (cmd == "go") {
-            const auto [nodes_searched, best_move] = search.best_move(game, 5);
+            const auto [nodes_searched, best_move] = mf::engine::Search::best_move(game, 5);
             if (best_move.piece == mf::chess::NONE) {
                 std::cerr << "No legal moves found, msg: '" << msg << "'\n";
                 std::cout << "error" << std::endl;
