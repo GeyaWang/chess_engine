@@ -1,6 +1,7 @@
 import subprocess
 import queue
 import threading
+from typing import Optional
 
 
 class Engine:
@@ -20,7 +21,9 @@ class Engine:
             raise ChildProcessError(f"Invalid filepath {filepath}")
 
         self._stderr_queue = queue.Queue()
+        self._stdout_queue = queue.Queue()
         threading.Thread(target=self._listen_stderr, daemon=True).start()
+        threading.Thread(target=self._listen_stdout, daemon=True).start()
 
     def __enter__(self):
         return self
@@ -31,6 +34,10 @@ class Engine:
     def _listen_stderr(self):
         for line in self._process.stderr:
             self._stderr_queue.put(line.rstrip("\n"))
+
+    def _listen_stdout(self):
+        for line in self._process.stdout:
+            self._stdout_queue.put(line.rstrip("\n"))
 
     def _is_terminated(self) -> bool:
         return self._process.poll() is not None
@@ -64,17 +71,27 @@ class Engine:
     def listen(self) -> str:
         if self._is_terminated():
             raise ChildProcessError("Cannot listen to engine. Engine process is terminated")
-        msg = self._process.stdout.readline().rstrip("\n")
+        msg = self._stdout_queue.get()
 
         if self.is_verbose:
             print(f"Received: {msg}")
 
         return msg
 
-    def listen_stderr(self) -> list[str]:
-        lines = []
-        while True:
-            try:
-                lines.append(self._stderr_queue.get_nowait())
-            except queue.Empty:
-                return lines
+    def async_listen(self) -> Optional[str]:
+        try:
+            return self._stdout_queue.get_nowait()
+        except queue.Empty:
+            return None
+
+    def async_listen_stderr(self) -> Optional[str]:
+        # lines = []
+        # while True:
+        #     try:
+        #         lines.append(self._stderr_queue.get_nowait())
+        #     except queue.Empty:
+        #         return lines
+        try:
+            return self._stderr_queue.get_nowait()
+        except queue.Empty:
+            return None

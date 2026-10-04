@@ -200,32 +200,24 @@ class EngineGui(Gui):
             if cmd == "uciok":
                 break
 
-    def _play_engine_first_move(self):
-        engine_move = self._get_engine_move()
-        if engine_move is None:
-            raise chess.InvalidMoveError(f"Failed to get engine move")
-
-        is_engine_move_valid = self._try_play_move(engine_move)
-        if not is_engine_move_valid:
-            raise chess.InvalidMoveError(f"Invalid engine move: {engine_move}")
-
-        self.prev_move = engine_move
-        self._update_engine_pos(engine_move)
-
     def __init__(self, engine: Engine):
         super().__init__()
         self._engine = engine
+        self._is_waiting_for_engine = False
+
         self._init_uci()
-
         if not self._is_player_white:
-            self._play_engine_first_move()
-
+            self._request_engine_move()
+            self._is_waiting_for_engine = True
 
     def _undo_prev_move(self):
         self._board.pop()
 
     def _update_engine_pos(self, move: chess.Move) -> None:
         self._engine.write(f"position moves {move.uci()}")
+
+    def _request_engine_move(self):
+        self._engine.write("go")
 
     def _get_engine_move(self) -> Optional[chess.Move]:
         self._engine.write("go")
@@ -247,6 +239,16 @@ class EngineGui(Gui):
             print("Unknown command received from engine")
             return None
 
+    def _play_engine_move(self, move: chess.Move) -> bool:
+        is_engine_move_valid = self._try_play_move(move)
+        if not is_engine_move_valid:
+            print(f"Invalid move from engine: {move}")
+            return False
+
+        self.prev_move = move
+        self._update_engine_pos(move)
+        return True
+
     def _on_mouse_up(self) -> None:
         if self.held_piece is None:
             return
@@ -257,31 +259,52 @@ class EngineGui(Gui):
         )
         self.held_piece = None
 
-        is_played = self._try_play_move(move)
-        if not is_played:
-            print(f"Invalid move attempted: {move}")
-            return
+        if not self._is_waiting_for_engine:
+            is_played = self._try_play_move(move)
+            if not is_played:
+                print(f"Invalid move attempted: {move}")
+                return
 
-        self._update_engine_pos(move)
-        engine_move = self._get_engine_move()
-        if engine_move is None:
-            self._undo_prev_move()
-            return
-
-        is_engine_move_valid = self._try_play_move(engine_move)
-        if not is_engine_move_valid:
-            self._undo_prev_move()
-            print(f"Invalid move from engine: {engine_move}")
-            return
-
-        self.prev_move = engine_move
-        self._update_engine_pos(engine_move)
+            self._update_engine_pos(move)
+            self._request_engine_move()
+            self._is_waiting_for_engine = True
 
     def _exit(self):
         super()._exit()
         self._engine.write("quit")
 
+    def _handle_engine_msg(self, msg: str) -> bool:
+        msg_lines = msg.split(' ')
+        cmd = msg_lines[0]
+
+        if cmd == "bestmove":
+            try:
+                uci_move = msg_lines[1]
+                engine_move = chess.Move.from_uci(uci_move)
+                return self._play_engine_move(engine_move)
+
+            except chess.InvalidMoveError:
+                print("Invalid uci move received from engine")
+                return False
+        elif cmd == "error":
+            return False
+        else:
+            print("Unknown command received from engine")
+            return False
+
     def _main(self):
         super()._main()
-        for line in self._engine.listen_stderr():
-            print(f"[ENGINE ERROR] {line}", file=sys.stderr)
+
+        if self._is_waiting_for_engine:
+            msg = self._engine.async_listen()
+            if msg is not None:
+                self._is_waiting_for_engine = False
+                is_valid = self._handle_engine_msg(msg)
+                if not is_valid:
+                    self._undo_prev_move()
+
+        while True:
+            msg = self._engine.async_listen_stderr()
+            if msg is None:
+                break
+            print(f"[ENGINE ERROR] {msg}", file=sys.stderr)
