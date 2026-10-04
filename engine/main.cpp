@@ -94,7 +94,7 @@ struct ParsedMove {
 
 std::optional<ParsedMove> parse_uci_move(const std::string& s) {
     if (s.size() < 4 || s.size() > 5) {
-        throw std::invalid_argument("Invalid uci move");
+        return std::nullopt;
     }
 
     const mf::chess::Square from = parse_square(s[0], s[1]);
@@ -128,18 +128,19 @@ void gui_mode() {
             if (str_list.size() <= 1) {
                 std::cerr << "Invalid move from client, no moves given, msg: '" << msg << "'\n";
                 std::cout << "error" << std::endl;
+                continue;
             }
 
             const auto parsed_move = parse_uci_move(str_list.at(1));
             if (!parsed_move.has_value()) {
-                std::cerr << "Invalid move from client, failed uci parse, msg: '" << msg << "'\n";
+                std::cerr << "Invalid move from client, bad uci, msg: '" << msg << "'\n";
                 std::cout << "error" << std::endl;
                 continue;
             }
 
             const auto [from_square, to_square, promotion] = parsed_move.value();
             if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
-                std::cerr << "Invalid move from client, move failed, msg: '" << msg << "'\n";
+                std::cerr << "Invalid move from client, illegal move, msg: '" << msg << "'\n";
                 std::cout << "error" << std::endl;
                 continue;
             }

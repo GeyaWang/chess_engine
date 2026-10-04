@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pygame
 import pathlib
 import chess
+import sys
 from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, DARK_MOVE_CLR, LIGHT_MOVE_CLR, PLAYER_COLOUR
 from engine import Engine
 
@@ -160,46 +161,56 @@ class Gui:
         rank, file = self._get_rank_file(square)
         self.held_piece = HeldPiece(rank, file, piece)
 
+    @staticmethod
+    def _exit():
+        pygame.quit()
+
+    def _main(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif event.type == pygame.MOUSEBUTTONUP:
+                self._on_mouse_up()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self._on_mouse_down()
+
+            # Draw board
+        self._draw_board()
+        self._draw_pieces()
+        self._draw_held_piece()
+
+        pygame.display.flip()
+        self._clock.tick(FPS)
+
     def run(self) -> None:
         self.running = True
 
         while self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    self._on_mouse_up()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    self._on_mouse_down()
+            self._main()
 
-            # Draw board
-            self._draw_board()
-            self._draw_pieces()
-            self._draw_held_piece()
-
-            pygame.display.flip()
-            self._clock.tick(FPS)
-
-        pygame.quit()
+        self._exit()
 
 
 class EngineGui(Gui):
     def __init__(self, engine: Engine):
         super().__init__()
         self._engine = engine
+        self._engine.write("gui")
 
     def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
         uci_move = move.uci()
         msg_send = f"move {uci_move}"
         self._engine.write(msg_send)
-        print(f"Sent: {msg_send.strip()}")
+        print(f"Sent: {msg_send}")
         msg_rec = self._engine.listen()
-        print(f"Received: {msg_rec.strip()}")
+        print(f"Received: {msg_rec}")
 
-        engine_msg = msg_rec.strip().split(' ')
+        engine_msg = msg_rec.split(' ')
         if engine_msg[0] == "error":
+            self._board.pop()
+            self.prev_move = None
             return None
-        elif engine_msg[1] == "bestmove":
+        elif engine_msg[0] == "bestmove":
             return chess.Move.from_uci(engine_msg[1])
         else:
             print("Unknown command received from engine")
@@ -223,6 +234,11 @@ class EngineGui(Gui):
                 if not is_engine_move_valid:
                     print(f"Invalid move from engine: {engine_move}")
 
-    def run(self) -> None:
-        self._engine.write("gui")
-        super().run()
+    def _exit(self):
+        super()._exit()
+        self._engine.write("quit")
+
+    def _main(self):
+        super()._main()
+        for line in self._engine.listen_stderr():
+            print(f"[ENGINE ERROR] {line}", file=sys.stderr)

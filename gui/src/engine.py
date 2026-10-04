@@ -1,5 +1,6 @@
 import subprocess
-import os
+import queue
+import threading
 
 
 class Engine:
@@ -14,13 +15,20 @@ class Engine:
                 bufsize=1,
             )
         except PermissionError:
-            raise ChildProcessError(f"Bad filepath {filepath}")
+            raise ChildProcessError(f"Invalid filepath {filepath}")
+
+        self._stderr_queue = queue.Queue()
+        threading.Thread(target=self._listen_stderr, daemon=True).start()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.terminate()
+
+    def _listen_stderr(self):
+        for line in self._process.stderr:
+            self._stderr_queue.put(line.rstrip("\n"))
 
     def _is_terminated(self) -> bool:
         return self._process.poll() is not None
@@ -51,5 +59,13 @@ class Engine:
     def listen(self) -> str:
         if self._is_terminated():
             raise ChildProcessError("Cannot listen to engine. Engine process is terminated")
-        msg = self._process.stdout.readline()
+        msg = self._process.stdout.readline().rstrip("\n")
         return msg
+
+    def listen_stderr(self) -> list[str]:
+        lines = []
+        while True:
+            try:
+                lines.append(self._stderr_queue.get_nowait())
+            except queue.Empty:
+                return lines
