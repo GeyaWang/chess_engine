@@ -200,34 +200,48 @@ class EngineGui(Gui):
             if cmd == "uciok":
                 break
 
+    def _play_engine_first_move(self):
+        engine_move = self._get_engine_move()
+        if engine_move is None:
+            raise chess.InvalidMoveError(f"Failed to get engine move")
+
+        is_engine_move_valid = self._try_play_move(engine_move)
+        if not is_engine_move_valid:
+            raise chess.InvalidMoveError(f"Invalid engine move: {engine_move}")
+
+        self.prev_move = engine_move
+        self._update_engine_pos(engine_move)
+
     def __init__(self, engine: Engine):
         super().__init__()
         self._engine = engine
         self._init_uci()
 
-    def _undo_move(self):
+        if not self._is_player_white:
+            self._play_engine_first_move()
+
+
+    def _undo_prev_move(self):
         self._board.pop()
 
-    def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
-        uci_move = move.uci()
-        self._engine.write(f"position moves {uci_move}")
+    def _update_engine_pos(self, move: chess.Move) -> None:
+        self._engine.write(f"position moves {move.uci()}")
+
+    def _get_engine_move(self) -> Optional[chess.Move]:
         self._engine.write("go")
         msg_rec = self._engine.listen()
 
         msg_lines = msg_rec.split(' ')
         cmd = msg_lines[0]
         if cmd == "error":
-            self._undo_move()
             return None
         elif cmd == "bestmove":
             try:
                 uci_move = msg_lines[1]
                 engine_move = chess.Move.from_uci(uci_move)
-                self._engine.write(f"position moves {uci_move}")
                 return engine_move
             except chess.InvalidMoveError:
                 print("Invalid uci move received from engine")
-                self._undo_move()
                 return None
         else:
             print("Unknown command received from engine")
@@ -244,13 +258,24 @@ class EngineGui(Gui):
         self.held_piece = None
 
         is_played = self._try_play_move(move)
-        if is_played:
-            engine_move = self._get_engine_move(move)
-            if engine_move is not None:
-                is_engine_move_valid = self._try_play_move(engine_move)
-                self.prev_move = move
-                if not is_engine_move_valid:
-                    print(f"Invalid move from engine: {engine_move}")
+        if not is_played:
+            print(f"Invalid move attempted: {move}")
+            return
+
+        self._update_engine_pos(move)
+        engine_move = self._get_engine_move()
+        if engine_move is None:
+            self._undo_prev_move()
+            return
+
+        is_engine_move_valid = self._try_play_move(engine_move)
+        if not is_engine_move_valid:
+            self._undo_prev_move()
+            print(f"Invalid move from engine: {engine_move}")
+            return
+
+        self.prev_move = engine_move
+        self._update_engine_pos(engine_move)
 
     def _exit(self):
         super()._exit()
