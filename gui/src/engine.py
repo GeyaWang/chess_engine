@@ -85,12 +85,6 @@ class Engine:
             return None
 
     def async_listen_stderr(self) -> Optional[str]:
-        # lines = []
-        # while True:
-        #     try:
-        #         lines.append(self._stderr_queue.get_nowait())
-        #     except queue.Empty:
-        #         return lines
         try:
             return self._stderr_queue.get_nowait()
         except queue.Empty:

@@ -4,7 +4,7 @@ import pygame
 import pathlib
 import chess
 import sys
-from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, DARK_MOVE_CLR, LIGHT_MOVE_CLR, PLAYER_COLOUR
+from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, MOVE_CLR, PLAYER_COLOUR, CHECKMATE_CLR
 from engine import Engine
 
 
@@ -43,6 +43,15 @@ class Gui:
         (chess.BLACK, chess.KING): load_piece_img("bk.png"),
     }
 
+    DARK_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
+    LIGHT_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
+    MOVE_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
+    CHECKMATE_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
+
+    DARK_SQUARE.fill(DARK_CLR)
+    LIGHT_SQUARE.fill(LIGHT_CLR)
+    MOVE_SQUARE.fill(MOVE_CLR)
+    CHECKMATE_SQUARE.fill(CHECKMATE_CLR)
 
     def __init__(self):
         self._board = chess.Board()
@@ -84,20 +93,28 @@ class Gui:
             return chess.square(x, 7 - y)
         return chess.square(x, y)
 
-    def _draw_square(self, x: int, y: int, clr: tuple[int]) -> None:
-        pygame.draw.rect(self.screen, clr, pygame.Rect(*self._get_real_coord(x, y), SQUARE_WIDTH, SQUARE_HEIGHT))
+    def _draw_square(self, x: int, y: int, surf: pygame.Surface) -> None:
+        self.screen.blit(surf, self._get_real_coord(x, y))
 
     def _draw_board(self) -> None:
         for x in range(8):
             for y in range(8):
-                clr = LIGHT_CLR if (x + y + self._is_player_white) % 2 else DARK_CLR
-                self._draw_square(x, y, clr)
+                surf = self.LIGHT_SQUARE if (x + y + self._is_player_white) % 2 else self.DARK_SQUARE
+                self._draw_square(x, y, surf)
 
+        # Move squares
         if self.prev_move is not None:
             for square in (self.prev_move.from_square, self.prev_move.to_square):
                 x, y = self._get_coord_from_square(square)
-                clr = LIGHT_MOVE_CLR if (x + y + self._is_player_white) % 2 else DARK_MOVE_CLR
-                self._draw_square(x, y, clr)
+                self._draw_square(x, y, self.MOVE_SQUARE)
+
+        # Checkmate squares
+        outcome = self._board.outcome()
+        if outcome is not None and outcome.winner is not None:
+            king_square = self._board.king(chess.WHITE) if outcome.winner == chess.BLACK else self._board.king(chess.BLACK)
+            if king_square is not None:
+                x, y = self._get_coord_from_square(king_square)
+                self._draw_square(x, y, self.CHECKMATE_SQUARE)
 
     def _draw_pieces(self) -> None:
         for square in chess.SQUARES:
@@ -249,6 +266,19 @@ class EngineGui(Gui):
         self._update_engine_pos(move)
         return True
 
+    def _play_player_move(self, move: chess.Move) -> None:
+        if not self._is_waiting_for_engine and not self._board.is_game_over():
+            is_played = self._try_play_move(move)
+            if not is_played:
+                print(f"Invalid move attempted: {move}")
+                return
+
+            self._update_engine_pos(move)
+
+            if not self._board.is_game_over():
+                self._request_engine_move()
+                self._is_waiting_for_engine = True
+
     def _on_mouse_up(self) -> None:
         if self.held_piece is None:
             return
@@ -258,16 +288,7 @@ class EngineGui(Gui):
             self._get_mouse_square()
         )
         self.held_piece = None
-
-        if not self._is_waiting_for_engine:
-            is_played = self._try_play_move(move)
-            if not is_played:
-                print(f"Invalid move attempted: {move}")
-                return
-
-            self._update_engine_pos(move)
-            self._request_engine_move()
-            self._is_waiting_for_engine = True
+        self._play_player_move(move)
 
     def _exit(self):
         super()._exit()
