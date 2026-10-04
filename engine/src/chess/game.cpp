@@ -113,9 +113,6 @@ namespace mf::chess {
 
     void Game::set_fen_pos(const std::string& fen_str) {
         BoardState board{};
-        current_index_ = 0;
-        state_history_[0] = board;
-
         std::stringstream ss;
         ss.str(fen_str);
 
@@ -209,8 +206,14 @@ namespace mf::chess {
             board.en_passent_target = bit(passantSquare);
         }
 
+        // Half moves
+        board.fifty_move_rule_counter = std::stoi(half_moves);
+
         // Hash
         board.hash = hash_generator_.hash(board);
+
+        current_index_ = 0;
+        state_history_[0] = board;
     }
 
     bool Game::is_soft_draw() {
@@ -218,15 +221,15 @@ namespace mf::chess {
 
         // 50 move rule
         if (board_state.fifty_move_rule_counter >= 100) return true;
-\
+
         // Repetition
-        int count = 0;
-        const int limit = std::max(0, current_index_ - board_state.fifty_move_rule_counter);
-        for (int i = current_index_ - 2; i >= limit; i -= 2) {
-            if (state_history_[i].hash == board_state.hash) {
-                if (++count >= 1) return true;
-            }
-        }
+        // int count = 0;
+        // const int limit = std::max(0, current_index_ - board_state.fifty_move_rule_counter);
+        // for (int i = current_index_ - 2; i >= limit; i -= 2) {
+        //     if (state_history_[i].hash == board_state.hash) {
+        //         if (++count >= 1) return true;
+        //     }
+        // }
 
         // Insufficient material
         if (!(board_state.bitboards[WHITE_PAWN] || board_state.bitboards[WHITE_ROOK] || board_state.bitboards[WHITE_QUEEN] ||
