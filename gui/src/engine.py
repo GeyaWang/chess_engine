@@ -4,7 +4,9 @@ import threading
 
 
 class Engine:
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, verbose: bool = True):
+        self.is_verbose = verbose
+
         try:
             self._process = subprocess.Popen(
                 [filepath],
@@ -56,10 +58,17 @@ class Engine:
         self._process.stdin.write(msg + "\n")
         self._process.stdin.flush()
 
+        if self.is_verbose:
+            print(f"Sent: {msg}")
+
     def listen(self) -> str:
         if self._is_terminated():
             raise ChildProcessError("Cannot listen to engine. Engine process is terminated")
         msg = self._process.stdout.readline().rstrip("\n")
+
+        if self.is_verbose:
+            print(f"Received: {msg}")
+
         return msg
 
     def listen_stderr(self) -> list[str]:

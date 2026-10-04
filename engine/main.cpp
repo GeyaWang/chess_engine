@@ -112,7 +112,7 @@ std::string move_to_uci(const mf::chess::Move& move) {
 }
 
 
-void gui_mode() {
+int main() {
     mf::chess::Game game{};
     mf::engine::Search search{};
 
@@ -121,60 +121,16 @@ void gui_mode() {
         std::getline(std::cin, msg);
         const auto str_list = parse_msg(msg);
 
-        const auto& cmd = str_list.at(0);
-        if (cmd == "quit") {
-            break;
-        } if (cmd == "move") {
-            if (str_list.size() <= 1) {
-                std::cerr << "Invalid move from client, no moves given, msg: '" << msg << "'\n";
-                std::cout << "error" << std::endl;
-                continue;
-            }
-
-            const auto parsed_move = parse_uci_move(str_list.at(1));
-            if (!parsed_move.has_value()) {
-                std::cerr << "Invalid move from client, bad uci, msg: '" << msg << "'\n";
-                std::cout << "error" << std::endl;
-                continue;
-            }
-
-            const auto [from_square, to_square, promotion] = parsed_move.value();
-            if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
-                std::cerr << "Invalid move from client, illegal move, msg: '" << msg << "'\n";
-                std::cout << "error" << std::endl;
-                continue;
-            }
-
-            const auto [nodes_searched, best_move] = search.best_move(game, 4);
-            game.make_move(best_move);
-            std::cout << "bestmove " << move_to_uci(best_move) << "\n";
-        } else {
-            std::cerr << "Unknown command: '" << msg << "'\n";
-            std::cout << "error" << std::endl;
-        }
-    }
-}
-
-
-void uci_mode() {
-    std::cout << "id name Mockfish\n" << "id author Geya Wang\n" << "uciok" << std::endl;
-
-    mf::chess::Game game{};
-    mf::engine::Search search{};
-
-    while (true) {
-        std::string msg;
-        std::getline(std::cin, msg);
-        const auto str_list = parse_msg(msg);
-
-        const auto& cmd = str_list.at(0);
-        if (cmd == "uci") {
+        if (const auto& cmd = str_list.at(0); cmd == "uci") {
             std::cout << "id name Mockfish\n" << "id author Geya Wang\n" << "uciok" << std::endl;
-        } else if (cmd == "isready") {
+        }
+        else if (cmd == "isready") {
             std::cout << "readyok" << std::endl;
-        } else if (cmd == "ucinewgame") {
+        }
+        else if (cmd == "ucinewgame") {
             game.restart();
-        } else if (cmd == "position") {
+        }
+        else if (cmd == "position") {
             size_t i = 1;
             if (i < str_list.size() && str_list[i] == "startpos") {
                 game.restart();
@@ -188,31 +144,31 @@ void uci_mode() {
                 for (i++; i < str_list.size(); i++) {
                     auto parsed_move = parse_uci_move(str_list[i]);
                     if (!parsed_move.has_value()) {
-                        std::cerr << "error Invalid move from client, msg: '" << msg << "'" << std::endl;
+                        std::cerr << "Invalid move from client, bad uci, msg: '" << msg << "'\n";
+                        std::cout << "error" << std::endl;
                         continue;
                     }
 
                     const auto [from_square, to_square, promotion] = parsed_move.value();
-                    game.make_move(from_square, to_square, promotion);
+                    if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
+                        std::cerr << "Invalid move from client, illegal move, msg: '" << msg << "'\n";
+                        std::cout << "error" << std::endl;
+                    }
                 }
             }
-        } else if (cmd == "go") {
+        }
+        else if (cmd == "go") {
             const auto [nodes_searched, best_move] = search.best_move(game, 4);
             std::cout << "bestmove " << move_to_uci(best_move) << "\n";
-        } else if (cmd == "quit") {
+        }
+        else if (cmd == "quit") {
             break;
         }
+        else {
+            std::cerr << "Unknown command: '" << msg << "'\n";
+            std::cout << "error" << std::endl;
+        }
     }
-}
 
-
-int main() {
-    std::string command;
-    std::getline(std::cin, command);
-    if (command == "gui") {
-        gui_mode();
-    } else if (command == "uci") {
-        uci_mode();
-    }
     return 0;
 }

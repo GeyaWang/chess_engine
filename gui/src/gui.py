@@ -136,7 +136,6 @@ class Gui:
     def _try_play_move(self, move: chess.Move) -> bool:
         if move in self._board.legal_moves:
             self._board.push(move)
-            self.prev_move = move
             return True
         return False
 
@@ -149,6 +148,7 @@ class Gui:
             self._get_mouse_square()
         )
         self._try_play_move(move)
+        self.prev_move = move
 
         self.held_piece = None
 
@@ -192,26 +192,43 @@ class Gui:
 
 
 class EngineGui(Gui):
+    def _init_uci(self):
+        self._engine.write("uci")
+        while True:
+            msg_rec = self._engine.listen()
+            cmd = msg_rec.split(' ')[0]
+            if cmd == "uciok":
+                break
+
     def __init__(self, engine: Engine):
         super().__init__()
         self._engine = engine
-        self._engine.write("gui")
+        self._init_uci()
+
+    def _undo_move(self):
+        self._board.pop()
 
     def _get_engine_move(self, move: chess.Move) -> Optional[chess.Move]:
         uci_move = move.uci()
-        msg_send = f"move {uci_move}"
-        self._engine.write(msg_send)
-        print(f"Sent: {msg_send}")
+        self._engine.write(f"position moves {uci_move}")
+        self._engine.write("go")
         msg_rec = self._engine.listen()
-        print(f"Received: {msg_rec}")
 
-        engine_msg = msg_rec.split(' ')
-        if engine_msg[0] == "error":
-            self._board.pop()
-            self.prev_move = None
+        msg_lines = msg_rec.split(' ')
+        cmd = msg_lines[0]
+        if cmd == "error":
+            self._undo_move()
             return None
-        elif engine_msg[0] == "bestmove":
-            return chess.Move.from_uci(engine_msg[1])
+        elif cmd == "bestmove":
+            try:
+                uci_move = msg_lines[1]
+                engine_move = chess.Move.from_uci(uci_move)
+                self._engine.write(f"position moves {uci_move}")
+                return engine_move
+            except chess.InvalidMoveError:
+                print("Invalid uci move received from engine")
+                self._undo_move()
+                return None
         else:
             print("Unknown command received from engine")
             return None
@@ -228,9 +245,10 @@ class EngineGui(Gui):
 
         is_played = self._try_play_move(move)
         if is_played:
-            engine_move = self._get_engine_move(self.prev_move)
+            engine_move = self._get_engine_move(move)
             if engine_move is not None:
                 is_engine_move_valid = self._try_play_move(engine_move)
+                self.prev_move = move
                 if not is_engine_move_valid:
                     print(f"Invalid move from engine: {engine_move}")
 
