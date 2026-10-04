@@ -2,6 +2,7 @@
 #include <chess/move_generator.hpp>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <utils/bit_operations.hpp>
 
 
@@ -124,6 +125,113 @@ namespace mf::chess {
         bitboards[piece] ^= mask;
         occupancy[get_piece_colour(piece)] ^= mask;
         all_pieces ^= mask;
+    }
+
+    void BoardState::set_fen(const std::string& fen_str) {
+        std::stringstream ss;
+        ss.str(fen_str);
+
+        std::string board_string;
+        std::string turn;
+        std::string castling;
+        std::string enpassant_target;
+        std::string half_moves;
+        std::string full_moves;
+
+        ss >> board_string;
+        ss >> turn;
+        ss >> castling;
+        ss >> enpassant_target;
+        ss >> half_moves;
+        ss >> full_moves;
+
+        // Board
+        int x = 0;
+        int y = 0;
+        for (int i = 0; i < board_string.length(); i++) {
+            const char c = board_string[i];
+            const Square square = x + y * 8;
+
+            if (c == '/') {
+                x = 0;
+                y++;
+            } else if (c <= '9' && c >= '0') {
+                x += c - '0';
+            } else if (c == 'p') {
+                set_at(BLACK_PAWN, square);
+                x++;
+            } else if (c == 'n') {
+                set_at(BLACK_KNIGHT, square);
+                x++;
+            } else if (c == 'b') {
+                set_at(BLACK_BISHOP, square);
+                x++;
+            } else if (c == 'r') {
+                set_at(BLACK_ROOK, square);
+                x++;
+            } else if (c == 'q') {
+                set_at(BLACK_QUEEN, square);
+                x++;
+            } else if (c == 'k') {
+                set_at(BLACK_KING, square);
+                x++;
+            } else if (c == 'P') {
+                set_at(WHITE_PAWN, square);
+                x++;
+            } else if (c == 'N') {
+                set_at(WHITE_KNIGHT, square);
+                x++;
+            } else if (c == 'B') {
+                set_at(WHITE_BISHOP, square);
+                x++;
+            } else if (c == 'R') {
+                set_at(WHITE_ROOK, square);
+                x++;
+            } else if (c == 'Q') {
+                set_at(WHITE_QUEEN, square);
+                x++;
+            } else if (c == 'K') {
+                set_at(WHITE_KING, square);
+                x++;
+            }
+        }
+
+        // Turn
+        if (turn == "b") {
+            side_to_move = BLACK;
+        } else {
+            side_to_move = WHITE;
+        }
+
+        // Castling
+        for (int i = 0; i < castling.length(); i++) {
+            if (const char c = castling[i]; c == 'K') castling_rights[WHITE] |= KINGSIDE_CASTLE;
+            else if (c == 'k') castling_rights[BLACK] |= KINGSIDE_CASTLE;
+            else if (c == 'Q') castling_rights[WHITE] |= QUEENSIDE_CASTLE;
+            else if (c == 'q') castling_rights[BLACK] |= QUEENSIDE_CASTLE;
+        }
+
+        // En-passent target
+        if (enpassant_target.length() >= 2)
+        {
+            const uint8_t passant_x = enpassant_target[0] - 'a';
+            const uint8_t passant_y = 7 - (enpassant_target[1] - '1');
+
+            const uint8_t passantSquare = passant_x + 8 * passant_y;
+            en_passent_target = bit(passantSquare);
+        }
+
+        // Half moves
+        fifty_move_rule_counter = std::stoi(half_moves);
+
+        // Occupancy
+        for (const auto& p : WHITE_PIECES) {
+            occupancy[WHITE] |= bitboards[p];
+        }
+        for (const auto& p : BLACK_PIECES) {
+            occupancy[BLACK] |= bitboards[p];
+        }
+        all_pieces = occupancy[WHITE] | occupancy[BLACK];
     }
 
     bool BoardState::is_king_attacked(const Colour colour) const {

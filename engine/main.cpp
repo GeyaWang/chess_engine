@@ -138,7 +138,7 @@ int main() {
             } else if (i < str_list.size() && str_list[i] == "fen") {
                 std::string fen;
                 for (i++; i < str_list.size() && str_list[i] != "moves"; i++) fen += str_list[i] + " ";
-                game.set_fen_pos(fen);
+                game.set_fen(fen);
             }
             if (i < str_list.size() && str_list[i] == "moves") {
                 for (i++; i < str_list.size(); i++) {
@@ -159,6 +159,11 @@ int main() {
         }
         else if (cmd == "go") {
             const auto [nodes_searched, best_move] = search.best_move(game, 4);
+            if (best_move.piece == mf::chess::NONE) {
+                std::cerr << "No legal moves found, msg: '" << msg << "'\n";
+                std::cout << "error" << std::endl;
+                continue;
+            }
             std::cout << "bestmove " << move_to_uci(best_move) << "\n";
         }
         else if (cmd == "quit") {

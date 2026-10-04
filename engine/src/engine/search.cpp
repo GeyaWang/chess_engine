@@ -24,8 +24,8 @@ namespace mf::engine {
         nodes_searched++;
 
         const auto terminal_state = game.get_terminal_state();
-        if (terminal_state == chess::WHITE_WIN) return 1000000 + depth;
-        if (terminal_state == chess::BLACK_WIN) return -(1000000 + depth);
+        if (terminal_state == chess::WHITE_WIN) return 100000 + depth;
+        if (terminal_state == chess::BLACK_WIN) return -(100000 + depth);
         if (terminal_state == chess::DRAW)      return 0;
 
         if (depth <= 0) return evaluate(board_state);
@@ -73,7 +73,7 @@ namespace mf::engine {
         uint64_t nodes_searched = 0;
         std::array<chess::Move, 218> moves;
         const int move_count = chess::MoveGenerator::gen_pseudo_legal(board_state, moves);
-        std::vector best_moves = {moves[0]};
+        std::vector<chess::Move> best_moves{};
 
         if (board_state.side_to_move == chess::WHITE) {
             int best_score = -1000000;
@@ -104,6 +104,10 @@ namespace mf::engine {
                 }
                 game.undo_move();
             }
+        }
+
+        if (best_moves.empty()) {
+            return {nodes_searched, {}};
         }
 
         std::uniform_int_distribution<std::size_t> dist(0, best_moves.size() - 1);

@@ -80,7 +80,9 @@ class Engine:
 
     def async_listen(self) -> Optional[str]:
         try:
-            return self._stdout_queue.get_nowait()
+            msg = self._stdout_queue.get_nowait()
+            print(f"Received: {msg}")
+            return msg
         except queue.Empty:
             return None
 

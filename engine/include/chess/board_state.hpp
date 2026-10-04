@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 
 
 namespace mf::chess {
@@ -82,6 +83,7 @@ namespace mf::chess {
         [[nodiscard]] PieceType piece_at(Square pos) const;
         void set_at(PieceType piece, Square pos);
         void apply_mask(PieceType piece, Board mask);
+        void set_fen(const std::string &fen_str);
 
         [[nodiscard]] bool is_king_attacked(Colour colour) const;
     };

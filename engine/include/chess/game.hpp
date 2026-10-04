@@ -33,7 +33,7 @@ namespace mf::chess {
         bool make_move(Square from, Square to, PieceType promotion);
         void undo_move();
         void restart();
-        void set_fen_pos(const std::string& fen_str);
+        void set_fen(const std::string& fen);
 
         bool is_soft_draw();
         TerminalState get_terminal_state();

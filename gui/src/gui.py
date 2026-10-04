@@ -53,8 +53,10 @@ class Gui:
     MOVE_SQUARE.fill(MOVE_CLR)
     CHECKMATE_SQUARE.fill(CHECKMATE_CLR)
 
-    def __init__(self):
+    def __init__(self, fen: Optional[str]=None):
         self._board = chess.Board()
+        if fen is not None:
+            self._board.set_fen(fen)
         self._clock = pygame.time.Clock()
 
         self.running = False
@@ -217,10 +219,16 @@ class EngineGui(Gui):
             if cmd == "uciok":
                 break
 
-    def __init__(self, engine: Engine):
-        super().__init__()
+    def _set_engine_fen(self, fen: str):
+        self._engine.write(f"position fen {fen}")
+
+    def __init__(self, engine: Engine, fen: Optional[str]=None):
+        super().__init__(fen)
         self._engine = engine
         self._is_waiting_for_engine = False
+
+        if fen is not None:
+            self._set_engine_fen(fen)
 
         self._init_uci()
         if not self._is_player_white:
