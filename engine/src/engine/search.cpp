@@ -3,46 +3,17 @@
 #include <chess/move_generator.hpp>
 #include <vector>
 #include <random>
+#include <array>
 
 
 namespace mf::engine {
-    namespace {
-        int piece_val(const chess::PieceType type) {
-            switch (type) {
-                case chess::WHITE_PAWN:
-                    return 100;
-                case chess::WHITE_KNIGHT:
-                case chess::WHITE_BISHOP:
-                    return 300;
-                case chess::WHITE_ROOK:
-                    return 500;
-                case chess::WHITE_QUEEN:
-                    return 900;
-                case chess::WHITE_KING:
-                    return 0;
-                case chess::BLACK_PAWN:
-                    return -100;
-                case chess::BLACK_KNIGHT:
-                case chess::BLACK_BISHOP:
-                    return -300;
-                case chess::BLACK_ROOK:
-                    return -500;
-                case chess::BLACK_QUEEN:
-                    return -900;
-                case chess::BLACK_KING:
-                case chess::NONE:
-                    return 0;
-            }
-            return 0;
-        }
-    }
-
+    constexpr std::array PIECE_VAL = {100, 300, 300, 500, 900, 0, -100, -300, -300, -500, -900, 0};
 
     int Search::evaluate(const chess::BoardState& board_state) {
         const auto bitboards = board_state.bitboards;
         int score = 0;
         for (const auto piece : chess::ALL_PIECES) {
-            score += std::popcount(bitboards[piece]) * piece_val(piece);
+            score += std::popcount(bitboards[piece]) * PIECE_VAL[piece];
         }
         return score;
     }
