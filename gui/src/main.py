@@ -12,14 +12,20 @@ def main():
         required=False,
         help="filepath to chess engine",
     )
+    parser.add_argument(
+        "-c",
+        "--colour",
+        required=False,
+        help="Player colour (\"white\" | \"black\" | \"w\" | \"b\")",
+    )
     args = parser.parse_args()
 
     if args.filepath is None:
-        gui = Gui()
+        gui = Gui(args.colour)
         gui.run()
     else:
         with Engine(os.path.abspath(args.filepath)) as engine:
-            gui = EngineGui(engine)
+            gui = EngineGui(engine, args.colour)
             gui.run()
 
 

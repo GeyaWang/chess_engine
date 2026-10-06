@@ -4,7 +4,7 @@ import pygame
 import pathlib
 import chess
 import sys
-from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, MOVE_CLR, PLAYER_COLOUR, CHECKMATE_CLR
+from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, MOVE_CLR, CHECKMATE_CLR
 from engine import Engine
 
 
@@ -53,7 +53,7 @@ class Gui:
     MOVE_SQUARE.fill(MOVE_CLR)
     CHECKMATE_SQUARE.fill(CHECKMATE_CLR)
 
-    def __init__(self, fen: Optional[str]=None):
+    def __init__(self, plyr_clr: Optional[str]=None, fen: Optional[str]=None):
         self._board = chess.Board()
         if fen is not None:
             self._board.set_fen(fen)
@@ -63,8 +63,12 @@ class Gui:
         self.held_piece = None
         self.prev_move = None
 
-        assert PLAYER_COLOUR == "WHITE" or PLAYER_COLOUR == "BLACK"
-        self._is_player_white = PLAYER_COLOUR == "WHITE"
+        if plyr_clr is None:
+            self._is_player_white = True
+        else:
+            plyr_clr = plyr_clr.lower().strip()
+            assert plyr_clr == "white" or plyr_clr == "w" or plyr_clr == "black" or plyr_clr == "b"
+            self._is_player_white = plyr_clr == "white" or plyr_clr == "w"
 
     @staticmethod
     def _get_real_coord(x: int, y: int) -> tuple[int, int]:
@@ -226,8 +230,8 @@ class EngineGui(Gui):
     def _set_engine_fen(self, fen: str):
         self._engine.write(f"position fen {fen}")
 
-    def __init__(self, engine: Engine, fen: Optional[str]=None):
-        super().__init__(fen)
+    def __init__(self, engine: Engine, plyr_clr: Optional[str]=None, fen: Optional[str]=None):
+        super().__init__(plyr_clr, fen)
         self._engine = engine
         self._is_waiting_for_engine = False
         self._prev_prev_move = None

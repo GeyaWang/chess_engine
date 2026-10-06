@@ -1,4 +1,4 @@
 #!/bin/bash
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/.venv/bin/activate"
-python "$DIR/src/main.py" -fp="../engine/bin/mockfish"
+python "$DIR/src/main.py" -c=b -fp=../engine/bin/mockfish
