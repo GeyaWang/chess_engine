@@ -31,7 +31,7 @@ namespace mf::chess {
         }
 
         // Turn
-        if (board_state.side_to_move == BLACK) hash ^= turn_hash;
+        if (board_state.turn == BLACK) hash ^= turn_hash;
 
         // Castling Rights
         if (board_state.castling_rights[WHITE] & QUEENSIDE_CASTLE) hash ^= castling_hashes[0];
