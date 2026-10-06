@@ -9,8 +9,8 @@ This is a personal project by Geya Wang over the summer of 2026.
 
 
 ## Building
-The project is tested for python 3.12 with python-chess 1.11.2 and C++20 on Ubuntu 24.04. Other versions may not work.
-Run gui/setup.sh to automatically create a python venv environment and install python dependencies.
+The project is tested for python 3.12 with python-chess 1.11.2 and C++20 on Ubuntu 24.04. Other versions may not work.\
+Run gui/setup.sh to automatically create a python venv environment and install python dependencies.\
 Run build_engine.sh to automatically build the engine as a .exe file located in engine/build.
 
 ## Playing
@@ -32,8 +32,12 @@ The frontend uses Python due to ease of development and access to a large variet
 Initially, I programmed both the game logic for the frontend and backend. However, due to the inherent proneness to bugs, I decided to switch to python-chess.
 Some thought was put into how the frontend and backend would communicate. I decided to have the backend as a subprocess of the frontend as this mimicks the popular universal chess interface (UCI) which states the engine and GUI should communicate through stdin.
 I used a context manager to manage the Engine class to ensure the subprocess is correctly terminated.
+Additionally, I carefully considered every failure case and implemented error handling which was crucial in the development process.
 
 ### Areas of Improvement
 The engine algorithm is quite rudimentary as it only takes into account the piece value of the positions as well as checkmates and stalemates. The evaluation function can be improved and perhaps a neural network could be used.
 Furthermore, move generation could be further optimised using techniques such as magic bitboards, quiescence search, and transposition tables.
 Unit tests were use but very basic methods were used. Proper techniques could have been used which would have sped up development.
+
+### Conclusion
+Developing this project was a great experience. I familiarised me more with Python and C++20 and I gained experience in compile-time optimisations, memory management, bit operations as well as general programming and project devlopment techniques.
