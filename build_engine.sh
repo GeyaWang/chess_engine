@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+cd engine
 
 BUILD_DIR="build"
 mkdir -p "$BUILD_DIR"
