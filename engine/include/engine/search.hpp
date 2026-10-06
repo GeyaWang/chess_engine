@@ -14,6 +14,8 @@ namespace mf::engine {
 
     class Search {
     public:
+        static constexpr chess::Move NULL_MOVE = { 0, {} };
+
         static auto get_gen() {
             std::random_device rd;
             const std::mt19937 gen(rd());
