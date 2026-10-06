@@ -84,16 +84,19 @@ class Gui:
 
     def _get_coord_from_square(self, square: chess.Square):
         rank, file = self._get_rank_file(square)
+
         if self._is_player_white:
             return file, 7 - rank
         else:
             return 7 - file, rank
 
-    def _get_mouse_square(self):
-        x, y = self._get_rel_coord(*pygame.mouse.get_pos())
+    def _get_square_from_coord(self, x: int, y: int):
         if self._is_player_white:
             return chess.square(x, 7 - y)
         return chess.square(7 - x, y)
+
+    def _get_mouse_square(self):
+        return self._get_square_from_coord(*self._get_rel_coord(*pygame.mouse.get_pos()))
 
     def _draw_square(self, x: int, y: int, surf: pygame.Surface) -> None:
         self.screen.blit(surf, self._get_real_coord(x, y))
@@ -238,8 +241,9 @@ class EngineGui(Gui):
             self._is_waiting_for_engine = True
 
     def _undo_prev_move(self):
-        self._board.pop()
-        self.prev_move = self._prev_prev_move
+        if self.prev_move is not None:
+            self._board.pop()
+            self.prev_move = self._prev_prev_move
 
     def _update_engine_pos(self, move: chess.Move) -> None:
         self._engine.write(f"position moves {move.uci()}")
