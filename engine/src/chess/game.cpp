@@ -94,7 +94,7 @@ namespace mf::chess {
         }
 
         new_state.hash = hash_generator_.hash(new_state);
-        new_state.side_to_move = switch_colour(ally_clr);
+        new_state.turn = switch_colour(ally_clr);
         new_state.fifty_move_rule_counter++;
         current_index_++;
     }
@@ -156,7 +156,7 @@ namespace mf::chess {
 
     TerminalState Game::get_terminal_state() {
         const BoardState& board_state = get_current_board();
-        const Colour clr = board_state.side_to_move;
+        const Colour clr = board_state.turn;
 
         // Soft draw
         if (is_soft_draw()) return DRAW;
