@@ -52,7 +52,7 @@ void print_pseudo_legal(Game& game) {
 
 bool is_terminal(Game& game) {
     const BoardState& board_state = game.get_current_board();
-    const Colour clr = board_state.side_to_move;
+    const Colour clr = board_state.turn;
 
     std::array<Move, 218> moves{};
     const int move_count = MoveGenerator::gen_pseudo_legal(board_state, moves);
@@ -85,7 +85,7 @@ int main() {
     game.make_move(parse("h5"), parse("f7"), NONE);
     draw_board(game.get_current_board());
 
-    const std::string side_to_move = game.get_current_board().side_to_move == WHITE ? "WHITE" : "BLACK";
+    const std::string side_to_move = game.get_current_board().turn == WHITE ? "WHITE" : "BLACK";
     std::cout << "colour to move=" << side_to_move << "\n";
 
     const bool is_term = is_terminal(game);
