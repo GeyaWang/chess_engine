@@ -49,9 +49,9 @@ int main() {
     using namespace mf::chess;
 
     Game game{};
-    game.set_fen("rnbqkbnr/pppppp1p/P7/8/8/1P6/2PPPPPp/RNBQKBNR b KQkq - 0 5");
-    draw_board(game.get_current_board());
-    std::cout << "turn=" << (game.get_current_board().side_to_move == WHITE) << "\n";
+    game.set_fen("rnbqkbnr/ppppppp1/P7/8/8/1P6/2PPPPpP/RNBQKBNR b KQkq - 0 5");
+    std::cout << get_board_str(game.get_current_board());
+    std::cout << "turn=" << (game.get_current_board().turn == WHITE) << "\n";
 
     std::array<Move, 218> moves;
     const int count = MoveGenerator::gen_pseudo_legal(game.get_current_board(), moves);
