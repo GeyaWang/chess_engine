@@ -47,7 +47,7 @@ namespace mf::chess {
 
     int MoveGenerator::gen_pseudo_legal(const BoardState& board_state, const std::span<Move> moves) {
         int count = 0;
-        if (board_state.side_to_move == WHITE) {
+        if (board_state.turn == WHITE) {
             generate_pawn_quiet_moves<WHITE>(board_state, moves, count);
             generate_pawn_captures<WHITE>(board_state, moves, count);
             generate_knight_moves<WHITE>(board_state, moves, count);
