@@ -49,25 +49,28 @@ namespace mf::chess {
     }
 
 
-    void draw_board(const BoardState& board_state) {
+    std::string get_board_str(const BoardState& board_state) {
         static std::string BOARD_TOP = "  ┌─" + repeat_string("──┬─", 7) + "──┐";
         static std::string BOARD_MID = "  ├─" + repeat_string("──┼─", 7) + "──┤";
         static std::string BOARD_BOT = "  └─" + repeat_string("──┴─", 7) + "──┘";
         static std::string BOTTOM = "    A   B   C   D   E   F   G   H";
 
-        std::cout << BOARD_TOP << "\n";
+        std::stringstream ss{};
+        ss << BOARD_TOP << "\n";
         for (int r = 8; r >= 1; r--) {
-            std::cout << r << " │ ";
+            ss << r << " │ ";
             for (int c = 0; c < 8; c++) {
                 const int pos = (8 - r) * 8 + c;
-                std::cout << get_piece_symbol(board_state.piece_at(pos)) << " │ ";
+                ss << get_piece_symbol(board_state.piece_at(pos)) << " │ ";
             }
             if (r != 1) {
-                std::cout << "\n" << BOARD_MID << "\n";
+                ss << "\n" << BOARD_MID << "\n";
             }
         }
-        std::cout << "\n" << BOARD_BOT << "\n";
-        std::cout << BOTTOM << "\n";
+        ss << "\n" << BOARD_BOT << "\n";
+        ss << BOTTOM << "\n";
+
+        return ss.str();
     }
 
     BoardState BoardState::create_default() {
@@ -198,9 +201,9 @@ namespace mf::chess {
 
         // Turn
         if (turn == "b") {
-            side_to_move = BLACK;
+            turn = BLACK;
         } else {
-            side_to_move = WHITE;
+            turn = WHITE;
         }
 
         // Castling

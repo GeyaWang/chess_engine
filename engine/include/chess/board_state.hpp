@@ -69,7 +69,7 @@ namespace mf::chess {
     struct BoardState {
         std::array<Board, ALL_PIECES.size()> bitboards{};
         Board en_passent_target{};
-        Colour side_to_move = WHITE;
+        Colour turn = WHITE;
         uint8_t fifty_move_rule_counter = 0;
 
         std::array<Board, 2> occupancy{};
@@ -89,5 +89,5 @@ namespace mf::chess {
     };
 
 
-    void draw_board(const BoardState& board_state);
+    std::string get_board_str(const BoardState& board_state);
 }
