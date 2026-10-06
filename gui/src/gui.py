@@ -4,12 +4,9 @@ import pygame
 import pathlib
 import chess
 import sys
-from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, MOVE_CLR, CHECKMATE_CLR
+from enum import Enum, auto
+from settings import SQUARE_HEIGHT, SQUARE_WIDTH, FPS, DARK_CLR, LIGHT_CLR, MOVE_CLR, CHECKMATE_CLR, ASSETS_PATH
 from engine import Engine
-
-
-BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
-ASSETS_DIR = BASE_DIR / "assets"
 
 
 @dataclass
@@ -19,41 +16,56 @@ class HeldPiece:
     piece: chess.Piece
 
 
-class Gui:
-    pygame.init()
-    screen = pygame.display.set_mode((SQUARE_WIDTH * 8, SQUARE_HEIGHT * 8))
-    pygame.display.set_caption("Chess")
+class SquareType(Enum):
+    DARK = auto()
+    LIGHT = auto()
+    MOVE = auto()
+    MATE = auto()
+
+
+class Assets:
+    @staticmethod
+    def load_piece_img(fp: str):
+        return pygame.transform.smoothscale(pygame.image.load(fp).convert_alpha(), (SQUARE_WIDTH, SQUARE_HEIGHT))
 
     @staticmethod
-    def load_piece_img(file: str):
-        return pygame.transform.smoothscale(pygame.image.load(str(ASSETS_DIR / file)).convert_alpha(), (SQUARE_WIDTH, SQUARE_HEIGHT))
+    def load_square_surf(clr: tuple[int]):
+        square = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
+        square.fill(clr)
+        return square
 
-    ASSET_DICT = {
-        (chess.WHITE, chess.PAWN): load_piece_img("wp.png"),
-        (chess.WHITE, chess.KNIGHT): load_piece_img("wn.png"),
-        (chess.WHITE, chess.BISHOP): load_piece_img("wb.png"),
-        (chess.WHITE, chess.ROOK): load_piece_img("wr.png"),
-        (chess.WHITE, chess.QUEEN): load_piece_img("wq.png"),
-        (chess.WHITE, chess.KING): load_piece_img("wk.png"),
-        (chess.BLACK, chess.PAWN): load_piece_img("bp.png"),
-        (chess.BLACK, chess.KNIGHT): load_piece_img("bn.png"),
-        (chess.BLACK, chess.BISHOP): load_piece_img("bb.png"),
-        (chess.BLACK, chess.ROOK): load_piece_img("br.png"),
-        (chess.BLACK, chess.QUEEN): load_piece_img("bq.png"),
-        (chess.BLACK, chess.KING): load_piece_img("bk.png"),
-    }
+    def __init__(self):
+        assets_dir = pathlib.Path(ASSETS_PATH).resolve()
+        self.asset_dict = {
+            (chess.WHITE, chess.PAWN):   self.load_piece_img(str(assets_dir / "wp.png")),
+            (chess.WHITE, chess.KNIGHT): self.load_piece_img(str(assets_dir / "wn.png")),
+            (chess.WHITE, chess.BISHOP): self.load_piece_img(str(assets_dir / "wb.png")),
+            (chess.WHITE, chess.ROOK):   self.load_piece_img(str(assets_dir / "wr.png")),
+            (chess.WHITE, chess.QUEEN):  self.load_piece_img(str(assets_dir / "wq.png")),
+            (chess.WHITE, chess.KING):   self.load_piece_img(str(assets_dir / "wk.png")),
+            (chess.BLACK, chess.PAWN):   self.load_piece_img(str(assets_dir / "bp.png")),
+            (chess.BLACK, chess.KNIGHT): self.load_piece_img(str(assets_dir / "bn.png")),
+            (chess.BLACK, chess.BISHOP): self.load_piece_img(str(assets_dir / "bb.png")),
+            (chess.BLACK, chess.ROOK):   self.load_piece_img(str(assets_dir / "br.png")),
+            (chess.BLACK, chess.QUEEN):  self.load_piece_img(str(assets_dir / "bq.png")),
+            (chess.BLACK, chess.KING):   self.load_piece_img(str(assets_dir / "bk.png")),
+        }
 
-    DARK_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
-    LIGHT_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
-    MOVE_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
-    CHECKMATE_SQUARE = pygame.Surface((SQUARE_WIDTH, SQUARE_HEIGHT), pygame.SRCALPHA)
+        self.square_dict = {
+            SquareType.DARK:  self.load_square_surf(DARK_CLR),
+            SquareType.LIGHT: self.load_square_surf(LIGHT_CLR),
+            SquareType.MOVE:  self.load_square_surf(MOVE_CLR),
+            SquareType.MATE:  self.load_square_surf(CHECKMATE_CLR)
+        }
 
-    DARK_SQUARE.fill(DARK_CLR)
-    LIGHT_SQUARE.fill(LIGHT_CLR)
-    MOVE_SQUARE.fill(MOVE_CLR)
-    CHECKMATE_SQUARE.fill(CHECKMATE_CLR)
 
+class Gui:
     def __init__(self, plyr_clr: Optional[str]=None, fen: Optional[str]=None):
+        pygame.init()
+        self.screen = pygame.display.set_mode((SQUARE_WIDTH * 8, SQUARE_HEIGHT * 8))
+        pygame.display.set_caption("Chess")
+
+        self.assets = Assets()
         self._board = chess.Board()
         if fen is not None:
             self._board.set_fen(fen)
@@ -102,20 +114,20 @@ class Gui:
     def _get_mouse_square(self):
         return self._get_square_from_coord(*self._get_rel_coord(*pygame.mouse.get_pos()))
 
-    def _draw_square(self, x: int, y: int, surf: pygame.Surface) -> None:
-        self.screen.blit(surf, self._get_real_coord(x, y))
+    def _draw_square(self, x: int, y: int, st: SquareType) -> None:
+        self.screen.blit(self.assets.square_dict[st], self._get_real_coord(x, y))
 
     def _draw_board(self) -> None:
         for x in range(8):
             for y in range(8):
-                surf = self.DARK_SQUARE if (x + y) % 2 else self.LIGHT_SQUARE
-                self._draw_square(x, y, surf)
+                square_type = SquareType.DARK if (x + y) % 2 else SquareType.LIGHT
+                self._draw_square(x, y, square_type)
 
         # Move squares
         if self.prev_move is not None:
             for square in (self.prev_move.from_square, self.prev_move.to_square):
                 x, y = self._get_coord_from_square(square)
-                self._draw_square(x, y, self.MOVE_SQUARE)
+                self._draw_square(x, y, SquareType.MOVE)
 
         # Checkmate squares
         outcome = self._board.outcome()
@@ -123,7 +135,7 @@ class Gui:
             king_square = self._board.king(chess.WHITE) if outcome.winner == chess.BLACK else self._board.king(chess.BLACK)
             if king_square is not None:
                 x, y = self._get_coord_from_square(king_square)
-                self._draw_square(x, y, self.CHECKMATE_SQUARE)
+                self._draw_square(x, y, SquareType.MATE)
 
     def _draw_pieces(self) -> None:
         for square in chess.SQUARES:
@@ -134,14 +146,14 @@ class Gui:
             if piece is None:
                 continue
 
-            img = self.ASSET_DICT[(piece.color, piece.piece_type)]
+            img = self.assets.asset_dict[(piece.color, piece.piece_type)]
             self.screen.blit(img, self._get_real_coord(*self._get_coord_from_square(square)))
 
     def _draw_held_piece(self) -> None:
         if self.held_piece is None:
             return
 
-        img = self.ASSET_DICT[(self.held_piece.piece.color, self.held_piece.piece.piece_type)]
+        img = self.assets.asset_dict[(self.held_piece.piece.color, self.held_piece.piece.piece_type)]
         mouse_x, mouse_y = pygame.mouse.get_pos()
         self.screen.blit(img, (mouse_x - SQUARE_WIDTH // 2, mouse_y - SQUARE_HEIGHT // 2))
 
