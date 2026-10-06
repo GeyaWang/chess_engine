@@ -36,12 +36,21 @@ mf::chess::Square parse_square(const char file, const char rank) {
 }
 
 
-mf::chess::PieceType parse_piece(const char c) {
-    if (c == 'n') return mf::chess::WHITE_KNIGHT;
-    if (c == 'b') return mf::chess::WHITE_BISHOP;
-    if (c == 'r') return mf::chess::WHITE_ROOK;
-    if (c == 'q') return mf::chess::WHITE_QUEEN;
-    if (c == 'k') return mf::chess::WHITE_KING;
+mf::chess::PieceType parse_piece(const mf::chess::Colour clr, const char c) {
+    if (clr == mf::chess::WHITE) {
+        if (c == 'n') return mf::chess::WHITE_KNIGHT;
+        if (c == 'b') return mf::chess::WHITE_BISHOP;
+        if (c == 'r') return mf::chess::WHITE_ROOK;
+        if (c == 'q') return mf::chess::WHITE_QUEEN;
+        if (c == 'k') return mf::chess::WHITE_KING;
+        return mf::chess::NONE;
+    }
+
+    if (c == 'n') return mf::chess::BLACK_KNIGHT;
+    if (c == 'b') return mf::chess::BLACK_BISHOP;
+    if (c == 'r') return mf::chess::BLACK_ROOK;
+    if (c == 'q') return mf::chess::BLACK_QUEEN;
+    if (c == 'k') return mf::chess::BLACK_KING;
     return mf::chess::NONE;
 }
 
@@ -92,7 +101,7 @@ struct ParsedMove {
 };
 
 
-std::optional<ParsedMove> parse_uci_move(const std::string& s) {
+std::optional<ParsedMove> parse_uci_move(const mf::chess::Colour clr, const std::string& s) {
     if (s.size() < 4 || s.size() > 5) {
         return std::nullopt;
     }
@@ -103,7 +112,7 @@ std::optional<ParsedMove> parse_uci_move(const std::string& s) {
         return std::nullopt;
     }
 
-    const mf::chess::PieceType promo = s.size() == 5 ? parse_piece(s[4]) : mf::chess::NONE;
+    const mf::chess::PieceType promo = s.size() == 5 ? parse_piece(clr, s[4]) : mf::chess::NONE;
 
     return ParsedMove{from, to, promo};
 }
@@ -142,24 +151,22 @@ int main() {
             }
             if (i < str_list.size() && str_list[i] == "moves") {
                 for (i++; i < str_list.size(); i++) {
-                    auto parsed_move = parse_uci_move(str_list[i]);
+                    auto parsed_move = parse_uci_move(game.get_current_board().turn, str_list[i]);
                     if (!parsed_move.has_value()) {
-                        std::cerr << "Invalid move from client, bad uci, msg: '" << msg << "'\n";
-                        std::cout << "error" << std::endl;
+                        std::cerr << "Invalid move from client, bad uci, msg: '" << msg << "'\n" << mf::chess::get_board_str(game.get_current_board());
                         continue;
                     }
 
                     const auto [from_square, to_square, promotion] = parsed_move.value();
                     if (const bool is_valid_move = game.make_move(from_square, to_square, promotion); !is_valid_move) {
-                        std::cerr << "Invalid move from client, illegal move, msg: '" << msg << "'\n";
-                        std::cout << "error" << std::endl;
+                        std::cerr << "Invalid move from client, illegal move, from=" << square_to_str(from_square) << ",to=" << square_to_str(to_square) << ",promo=" << piece_to_str(promotion) << "\n" << mf::chess::get_board_str(game.get_current_board());
                     }
                 }
             }
         }
         else if (cmd == "go") {
             const auto [nodes_searched, best_move] = mf::engine::Search::best_move(game, 5);
-            if (best_move.piece == mf::chess::NONE) {
+            if (best_move == mf::engine::Search::NULL_MOVE) {
                 std::cerr << "No legal moves found, msg: '" << msg << "'\n";
                 std::cout << "error" << std::endl;
                 continue;
