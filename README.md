@@ -40,4 +40,4 @@ Furthermore, move generation could be further optimised using techniques such as
 Basic unit testing was used but implementing proper techniques would have sped up development.
 
 ### Conclusion
-Developing this project was a great experience. I familiarised me more with Python and C++20 and I gained experience in compile-time optimisations, memory management, bit operations as well as general programming and project devlopment techniques.
+Developing this project was a great experience. It familiarised me more with Python and C++20 and I gained experience in compile-time optimisations, memory management, bit operations as well as general programming and project devlopment techniques.
