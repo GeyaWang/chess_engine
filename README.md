@@ -37,7 +37,7 @@ Additionally, I carefully considered every failure case and implemented error ha
 ### Areas of Improvement
 The engine algorithm is quite rudimentary as it only takes into account the piece value of the positions as well as checkmates and stalemates. The evaluation function can be improved and perhaps a neural network could be used.
 Furthermore, move generation could be further optimised using techniques such as magic bitboards, quiescence search, and transposition tables.
-Unit tests were use but very basic methods were used. Proper techniques could have been used which would have sped up development.
+Basic unit testing was used but implementing proper techniques would have sped up development.
 
 ### Conclusion
 Developing this project was a great experience. I familiarised me more with Python and C++20 and I gained experience in compile-time optimisations, memory management, bit operations as well as general programming and project devlopment techniques.
