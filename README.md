@@ -17,7 +17,7 @@ Run build_engine.sh to automatically build the engine as a .exe file located in 
 Play singleplayer mode by running play_singleplayer.sh or by running the command:\
 "python3 gui/src/main.py"\
 Play against the engine by running play_singleplayer.sh or by running the command:\
-"python3 gui/src/main.py --fp={PATH_TO_ENGINE} -col={PLAYER_COLOUR}"
+"python3 gui/src/main.py --fp={PATH_TO_ENGINE} -c={PLAYER_COLOUR}"
 
 ## Info About Project
 
